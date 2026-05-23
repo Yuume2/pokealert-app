@@ -60,13 +60,13 @@ export default function App() {
       <main className="flex-1 px-4 pt-3 pb-28 max-w-2xl w-full mx-auto">
         {error && !loading && <ErrorBanner message={error} onRetry={load} />}
 
-        <div key={tab} className="animate-in fade-in slide-in-from-bottom-1 duration-300">
+        <div key={tab} className="animate-page">
           {tab === 'home' && <HomePage status={status} stock={stock} loading={loading} />}
           {tab === 'stock' && <StockPage stock={stock} loading={loading} />}
           {tab === 'products' && (
             <ProductsPage stock={stock} loading={loading} onRefresh={load} />
           )}
-          {tab === 'stats' && <StatsPage />}
+          {tab === 'stats' && <StatsPage stock={stock} />}
         </div>
       </main>
 
