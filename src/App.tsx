@@ -8,6 +8,8 @@ import { ProductsPage } from './pages/Products'
 import { StatsPage } from './pages/Stats'
 import { Icon } from './components/Icons'
 import { cn } from './lib/cn'
+import { ProductDetailSheet } from './components/ProductDetailSheet'
+import { Onboarding } from './components/Onboarding'
 
 type Tab = 'home' | 'stock' | 'products' | 'stats'
 
@@ -23,10 +25,33 @@ export default function App() {
   const [stock, setStock] = useState<ProductWithStock[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState<ProductWithStock | null>(null)
+  const [showOnboarding, setShowOnboarding] = useState(false)
+  const [lastFetch, setLastFetch] = useState<number>(0)
 
-  const load = useCallback(async () => {
+  // Onboarding au 1er lancement
+  useEffect(() => {
     try {
-      setLoading(true)
+      const seen = localStorage.getItem('pokealert_seen_intro')
+      if (!seen) setShowOnboarding(true)
+    } catch {
+      // localStorage indispo (mode privé/incognito), skip
+    }
+  }, [])
+
+  const dismissOnboarding = () => {
+    try {
+      localStorage.setItem('pokealert_seen_intro', '1')
+    } catch {}
+    setShowOnboarding(false)
+  }
+
+  const load = useCallback(async (silent = false) => {
+    try {
+      if (!silent) setLoading(true)
+      else setRefreshing(true)
+
       if (useMock) {
         await new Promise((r) => setTimeout(r, 300))
         setStatus(MOCK_STATUS)
@@ -37,40 +62,80 @@ export default function App() {
         setStock(st)
       }
       setError(null)
+      setLastFetch(Date.now())
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erreur inconnue')
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
   }, [])
 
   useEffect(() => {
     load()
-    const interval = setInterval(load, 60_000)
+    const interval = setInterval(() => load(true), 60_000)
     return () => clearInterval(interval)
   }, [load])
+
+  // Si selectedProduct change suite à un refresh, le mettre à jour
+  useEffect(() => {
+    if (selectedProduct) {
+      const updated = stock.find((p) => p.id === selectedProduct.id)
+      if (updated) setSelectedProduct(updated)
+    }
+  }, [stock])
 
   const handleTabChange = (next: Tab) => {
     haptic('light')
     setTab(next)
+    // Reset scroll quand on change d'onglet
+    window.scrollTo({ top: 0, behavior: 'instant' })
+  }
+
+  const handleProductClick = (product: ProductWithStock) => {
+    haptic('medium')
+    setSelectedProduct(product)
   }
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       <main className="flex-1 px-4 pt-3 pb-28 max-w-2xl w-full mx-auto">
-        {error && !loading && <ErrorBanner message={error} onRetry={load} />}
+        {error && !loading && <ErrorBanner message={error} onRetry={() => load()} />}
 
         <div key={tab} className="animate-page">
-          {tab === 'home' && <HomePage status={status} stock={stock} loading={loading} />}
-          {tab === 'stock' && <StockPage stock={stock} loading={loading} />}
+          {tab === 'home' && (
+            <HomePage
+              status={status}
+              stock={stock}
+              loading={loading}
+              refreshing={refreshing}
+              lastFetch={lastFetch}
+              onProductClick={handleProductClick}
+              onRefresh={() => load(true)}
+            />
+          )}
+          {tab === 'stock' && (
+            <StockPage
+              stock={stock}
+              loading={loading}
+              onProductClick={handleProductClick}
+            />
+          )}
           {tab === 'products' && (
-            <ProductsPage stock={stock} loading={loading} onRefresh={load} />
+            <ProductsPage stock={stock} loading={loading} onRefresh={() => load(true)} />
           )}
           {tab === 'stats' && <StatsPage stock={stock} />}
         </div>
       </main>
 
-      <BottomNav current={tab} onChange={handleTabChange} />
+      <BottomNav current={tab} onChange={handleTabChange} refreshing={refreshing} />
+
+      <ProductDetailSheet
+        product={selectedProduct}
+        onClose={() => setSelectedProduct(null)}
+      />
+
+      {showOnboarding && <Onboarding onClose={dismissOnboarding} />}
     </div>
   )
 }
@@ -97,7 +162,15 @@ function ErrorBanner({ message, onRetry }: { message: string; onRetry: () => voi
   )
 }
 
-function BottomNav({ current, onChange }: { current: Tab; onChange: (t: Tab) => void }) {
+function BottomNav({
+  current,
+  onChange,
+  refreshing,
+}: {
+  current: Tab
+  onChange: (t: Tab) => void
+  refreshing: boolean
+}) {
   const tabs: Array<{ id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }> = [
     { id: 'home', label: 'Accueil', icon: Icon.Home },
     { id: 'stock', label: 'Stock', icon: Icon.LayoutGrid },
@@ -110,10 +183,20 @@ function BottomNav({ current, onChange }: { current: Tab; onChange: (t: Tab) => 
       className={cn(
         'fixed bottom-0 left-0 right-0 z-50',
         'border-t border-border bg-background/80 backdrop-blur-2xl',
-        'safe-bottom',
       )}
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
+      {/* Refresh indicator */}
+      {refreshing && (
+        <div className="absolute top-0 left-0 right-0 h-0.5 overflow-hidden">
+          <div className="h-full bg-primary animate-shimmer" style={{
+            background: 'linear-gradient(90deg, transparent, var(--color-primary), transparent)',
+            backgroundSize: '200% 100%',
+            animation: 'shimmer 1.4s linear infinite',
+          }} />
+        </div>
+      )}
+
       <div className="max-w-2xl mx-auto px-2">
         <div className="grid grid-cols-4">
           {tabs.map((t) => {

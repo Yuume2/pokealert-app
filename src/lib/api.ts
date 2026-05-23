@@ -34,12 +34,23 @@ export interface ProductWithStock extends Product {
 }
 
 export interface StatsData {
-  drops_today: number
-  drops_week: number
-  drops_total: number
-  top_magasins: Array<{ nom: string; count: number }>
-  top_produits: Array<{ nom: string; count: number }>
-  last_drops: Array<{ produit: string; magasin: string; time: string }>
+  snapshot_at: string
+  counts: {
+    total_products: number
+    actifs: number
+    inactifs: number
+    by_type: { ETB: number; Bundle: number; Tripack: number }
+    magasins_tracked: number
+    favoris_tracked: number
+  }
+  prices: {
+    total_catalog_value: number
+    min: number
+    max: number
+    avg: number
+  }
+  top_series: Array<{ nom: string; count: number }>
+  note?: string
 }
 
 export interface BotStatus {

@@ -2,6 +2,7 @@ import { Card, DisplayHeading, Eyebrow, SectionHeading, Skeleton, EmptyState, Ba
 import { Icon } from '../components/Icons'
 import { NumberDisplay } from '../components/NumberDisplay'
 import { haptic, openExternal } from '../lib/telegram'
+import { useLiveTime, formatRelativeShort } from '../lib/useLiveTime'
 import type { BotStatus, ProductWithStock, StockEntry } from '../lib/api'
 import { cn } from '../lib/cn'
 
@@ -9,9 +10,23 @@ interface Props {
   status: BotStatus | null
   stock: ProductWithStock[]
   loading: boolean
+  refreshing: boolean
+  lastFetch: number
+  onProductClick: (p: ProductWithStock) => void
+  onRefresh: () => void
 }
 
-export function HomePage({ status, stock, loading }: Props) {
+export function HomePage({
+  status,
+  stock,
+  loading,
+  refreshing,
+  lastFetch,
+  onProductClick,
+  onRefresh,
+}: Props) {
+  useLiveTime(15_000) // re-render every 15s pour relative times
+
   const dropsFavoris = stock.filter((p) => p.in_stock_favoris > 0)
   const dropsOthers = stock.filter((p) => p.in_stock_count > 0 && p.in_stock_favoris === 0)
   const totalDispo = stock.reduce((sum, p) => sum + p.in_stock_count, 0)
@@ -19,8 +34,15 @@ export function HomePage({ status, stock, loading }: Props) {
 
   return (
     <div className="space-y-10">
-      <Hero status={status} loading={loading} />
-      <Pulse status={status} totalDispo={totalDispo} totalProducts={totalProducts} loading={loading} />
+      <Hero status={status} loading={loading} refreshing={refreshing} lastFetch={lastFetch} onRefresh={onRefresh} />
+
+      <Pulse
+        status={status}
+        totalDispo={totalDispo}
+        totalProducts={totalProducts}
+        loading={loading}
+        lastFetch={lastFetch}
+      />
 
       <section className="space-y-4">
         <SectionHeader
@@ -38,7 +60,7 @@ export function HomePage({ status, stock, loading }: Props) {
             icon={Icon.Sparkles}
           />
         ) : (
-          <ProductList products={dropsFavoris} priority />
+          <ProductList products={dropsFavoris} priority onProductClick={onProductClick} />
         )}
       </section>
 
@@ -49,7 +71,7 @@ export function HomePage({ status, stock, loading }: Props) {
             title="Autres magasins"
             hint={`${dropsOthers.length}`}
           />
-          <ProductList products={dropsOthers} />
+          <ProductList products={dropsOthers} onProductClick={onProductClick} />
         </section>
       )}
 
@@ -59,10 +81,22 @@ export function HomePage({ status, stock, loading }: Props) {
 }
 
 /* ============================================================
-   HERO — signature éditoriale
+   HERO — signature éditoriale avec live ticker
    ============================================================ */
 
-function Hero({ status, loading }: { status: BotStatus | null; loading: boolean }) {
+function Hero({
+  status,
+  loading,
+  refreshing,
+  lastFetch,
+  onRefresh,
+}: {
+  status: BotStatus | null
+  loading: boolean
+  refreshing: boolean
+  lastFetch: number
+  onRefresh: () => void
+}) {
   return (
     <header className="relative pt-6 pb-2">
       {/* Aurora */}
@@ -83,8 +117,59 @@ function Hero({ status, loading }: { status: BotStatus | null; loading: boolean 
         <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground max-w-[34ch]">
           Surveillance temps réel des coffrets Pokémon TCG dans neuf magasins FNAC. Alerte instantanée dès qu'un produit passe en rayon.
         </p>
+
+        {/* Live ticker en bas du hero */}
+        {!loading && lastFetch > 0 && (
+          <LiveTicker lastFetch={lastFetch} refreshing={refreshing} onRefresh={onRefresh} />
+        )}
       </div>
     </header>
+  )
+}
+
+function LiveTicker({
+  lastFetch,
+  refreshing,
+  onRefresh,
+}: {
+  lastFetch: number
+  refreshing: boolean
+  onRefresh: () => void
+}) {
+  const handleClick = () => {
+    haptic('light')
+    onRefresh()
+  }
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={refreshing}
+      className={cn(
+        'mt-5 inline-flex items-center gap-2 text-[11px] text-muted-foreground',
+        'hover:text-foreground transition-colors',
+        refreshing && 'opacity-60 pointer-events-none',
+      )}
+    >
+      <span className="relative flex h-1.5 w-1.5">
+        {refreshing ? (
+          <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+        ) : (
+          <>
+            <span className="absolute inset-0 rounded-full bg-success animate-ping opacity-75" />
+            <span className="relative h-1.5 w-1.5 rounded-full bg-success" />
+          </>
+        )}
+      </span>
+      <span className="tabular-nums">
+        {refreshing ? 'Synchronisation…' : `Mis à jour ${formatRelativeShort(new Date(lastFetch).toISOString())}`}
+      </span>
+      <span className="text-subtle-foreground">·</span>
+      <span className="inline-flex items-center gap-1 underline-offset-2 hover:underline">
+        Rafraîchir
+        <Icon.ArrowRight className="h-2.5 w-2.5" />
+      </span>
+    </button>
   )
 }
 
@@ -149,25 +234,36 @@ function Pulse({
   totalDispo,
   totalProducts,
   loading,
+  lastFetch,
 }: {
   status: BotStatus | null
   totalDispo: number
   totalProducts: number
   loading: boolean
+  lastFetch: number
 }) {
   if (loading) {
-    return <Skeleton className="h-[180px]" />
+    return <Skeleton className="h-[200px]" />
   }
 
   const nextRun = status?.next_run ? new Date(status.next_run) : null
-  const minutesUntilNext = nextRun ? Math.max(0, Math.round((nextRun.getTime() - Date.now()) / 60_000)) : null
+  const minutesUntilNext = nextRun
+    ? Math.max(0, Math.round((nextRun.getTime() - Date.now()) / 60_000))
+    : null
 
   return (
     <Card className="relative overflow-hidden">
       <div className="pointer-events-none absolute -top-12 -right-12 h-48 w-48 rounded-full aurora-primary blur-3xl" />
 
       <div className="relative p-5">
-        <Eyebrow>Pulse</Eyebrow>
+        <div className="flex items-center justify-between">
+          <Eyebrow>Pulse</Eyebrow>
+          {lastFetch > 0 && (
+            <span className="text-[10px] uppercase tracking-[0.12em] text-subtle-foreground tabular-nums">
+              {formatRelativeShort(new Date(lastFetch).toISOString())}
+            </span>
+          )}
+        </div>
 
         <div className="mt-4 grid grid-cols-3 gap-3">
           <PulseStat
@@ -296,14 +392,16 @@ function SkeletonList({ count }: { count: number }) {
 function ProductList({
   products,
   priority,
+  onProductClick,
 }: {
   products: ProductWithStock[]
   priority?: boolean
+  onProductClick: (p: ProductWithStock) => void
 }) {
   return (
     <div className="space-y-2.5">
       {products.map((p) => (
-        <ProductCard key={p.id} product={p} priority={priority} />
+        <ProductCard key={p.id} product={p} priority={priority} onClick={() => onProductClick(p)} />
       ))}
     </div>
   )
@@ -316,9 +414,11 @@ function ProductList({
 function ProductCard({
   product,
   priority,
+  onClick,
 }: {
   product: ProductWithStock
   priority?: boolean
+  onClick: () => void
 }) {
   const TypeIcon =
     product.type_produit === 'ETB' ? Icon.Box
@@ -331,7 +431,7 @@ function ProductCard({
   const remaining = product.stocks.length - visible.length
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden" interactive onClick={onClick}>
       {/* Top zone produit */}
       <div className="p-4 pb-3.5">
         <div className="flex items-start justify-between gap-4">
@@ -407,7 +507,8 @@ function ProductCard({
 function StoreLine({ stock, isFirst }: { stock: StockEntry; isFirst: boolean }) {
   const isLimited = stock.stock_label?.includes('limitée') ?? false
 
-  const handleClick = () => {
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation() // empêche d'ouvrir le sheet quand on clique le magasin
     haptic('light')
     const cleanCoord = stock.store_coord?.replace(/[()]/g, '')
     const url = cleanCoord

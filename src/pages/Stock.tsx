@@ -12,9 +12,10 @@ type SortBy = 'priority' | 'name' | 'price' | 'availability'
 interface Props {
   stock: ProductWithStock[]
   loading: boolean
+  onProductClick: (p: ProductWithStock) => void
 }
 
-export function StockPage({ stock, loading }: Props) {
+export function StockPage({ stock, loading, onProductClick }: Props) {
   const [filter, setFilter] = useState<Filter>('all')
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
   const [sortBy] = useState<SortBy>('priority')
@@ -85,7 +86,7 @@ export function StockPage({ stock, loading }: Props) {
         />
       ) : (
         <div className="space-y-2">
-          {filtered.map((p) => <StockRow key={p.id} product={p} />)}
+          {filtered.map((p) => <StockRow key={p.id} product={p} onClick={() => onProductClick(p)} />)}
         </div>
       )}
     </div>
@@ -235,7 +236,7 @@ function TypeFilterRow({
   )
 }
 
-function StockRow({ product }: { product: ProductWithStock }) {
+function StockRow({ product, onClick }: { product: ProductWithStock; onClick: () => void }) {
   const TypeIcon =
     product.type_produit === 'ETB' ? Icon.Box
       : product.type_produit === 'Bundle' ? Icon.Package
@@ -245,7 +246,7 @@ function StockRow({ product }: { product: ProductWithStock }) {
   const inFavoris = product.in_stock_favoris > 0
 
   return (
-    <Card>
+    <Card interactive onClick={onClick}>
       <div className="p-4">
         <div className="flex items-center gap-3">
           <div className={cn(
@@ -332,7 +333,8 @@ function StoreChip({
   coord?: string | null
   url?: string
 }) {
-  const onClick = () => {
+  const onClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
     haptic('light')
     const cleanCoord = coord?.replace(/[()]/g, '')
     const finalUrl = cleanCoord

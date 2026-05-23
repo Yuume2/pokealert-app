@@ -84,22 +84,24 @@ export const MOCK_STOCK: ProductWithStock[] = [
 ]
 
 export const MOCK_STATS: StatsData = {
-  drops_today: 3,
-  drops_week: 18,
-  drops_total: 47,
-  top_magasins: [
-    { nom: 'FNAC La Défense-CNIT', count: 12 },
-    { nom: 'FNAC Forum des Halles', count: 9 },
-    { nom: 'FNAC Beaugrenelle', count: 7 },
-  ],
-  top_produits: [
-    { nom: 'ME04 ETB', count: 8 },
-    { nom: 'ME04 Bundle', count: 6 },
-    { nom: 'ME03 ETB', count: 4 },
-  ],
-  last_drops: [
-    { produit: 'ME04 ETB', magasin: 'La Défense-CNIT', time: '11:23' },
-    { produit: 'ME04 Bundle', magasin: 'Forum des Halles', time: '10:48' },
-    { produit: 'ME03 ETB', magasin: 'Beaugrenelle', time: '09:15' },
+  snapshot_at: new Date().toISOString(),
+  counts: {
+    total_products: 22,
+    actifs: 22,
+    inactifs: 0,
+    by_type: { ETB: 7, Bundle: 8, Tripack: 7 },
+    magasins_tracked: 9,
+    favoris_tracked: 3,
+  },
+  prices: {
+    total_catalog_value: 805.78,
+    min: 17.99,
+    max: 55.99,
+    avg: 36.63,
+  },
+  top_series: [
+    { nom: 'Chaos Ascendant', count: 3 },
+    { nom: 'Équilibre Parfait', count: 3 },
+    { nom: 'Héros Transcendants', count: 2 },
   ],
 }
