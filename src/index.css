@@ -1,28 +1,124 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap");
 @import "tailwindcss";
 
+/* =========================================================
+   Design system — PokeAlert
+   Palette éditoriale dark, typo serif éditoriale,
+   inspirée de produits premium (Linear, Vercel, Lovable).
+   ========================================================= */
+
 @theme {
-  --color-bg: var(--tg-theme-bg-color, #0e0e10);
-  --color-bg-secondary: var(--tg-theme-secondary-bg-color, #1a1a1d);
-  --color-text: var(--tg-theme-text-color, #ffffff);
-  --color-hint: var(--tg-theme-hint-color, #8b8b8b);
-  --color-link: var(--tg-theme-link-color, #5288c1);
-  --color-accent: var(--tg-theme-button-color, #ff6b35);
-  --color-accent-text: var(--tg-theme-button-text-color, #ffffff);
-  --color-destructive: #ef4444;
-  --color-success: #22c55e;
+  /* Base */
+  --color-background: #0a0a0c;
+  --color-surface: #0e0e10;
+  --color-card: #131316;
+  --color-card-hover: #181820;
+  --color-border: #1f1f24;
+  --color-border-strong: #2a2a32;
+
+  /* Text */
+  --color-foreground: #fafaf9;
+  --color-muted-foreground: #8a8a93;
+  --color-subtle-foreground: #5c5c63;
+
+  /* Brand — gold/amber (collector vibe Pokémon, sobre) */
+  --color-primary: #d4a857;
+  --color-primary-foreground: #1a1410;
+  --color-primary-muted: rgba(212, 168, 87, 0.12);
+  --color-primary-border: rgba(212, 168, 87, 0.28);
+
+  /* Accents */
+  --color-success: #4ade80;
+  --color-success-muted: rgba(74, 222, 128, 0.12);
   --color-warning: #f59e0b;
+  --color-warning-muted: rgba(245, 158, 11, 0.12);
+  --color-destructive: #ef4444;
+  --color-destructive-muted: rgba(239, 68, 68, 0.12);
+
+  /* Typography */
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+  --font-display: "Instrument Serif", "Times New Roman", Georgia, serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Shadows */
+  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  --shadow-lift: 0 20px 40px -20px rgba(0, 0, 0, 0.6), 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-glow: 0 0 32px -8px rgba(212, 168, 87, 0.4);
+}
+
+/* Telegram theme override (when running inside Telegram) */
+:root {
+  color-scheme: dark;
 }
 
 html, body, #root {
   margin: 0;
   padding: 0;
   min-height: 100vh;
-  background: var(--color-bg);
-  color: var(--color-text);
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+  min-height: 100dvh;
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  overscroll-behavior-y: none;
+  text-rendering: optimizeLegibility;
 }
 
 * {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
+
+/* Aurora gradients — used as bg accents */
+.aurora-primary {
+  background: radial-gradient(circle at 50% 0%, rgba(212, 168, 87, 0.15) 0%, transparent 60%);
+}
+
+.aurora-warm {
+  background: radial-gradient(circle at 80% 20%, rgba(239, 68, 68, 0.08) 0%, transparent 50%);
+}
+
+/* Number tabular */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* Press effect (Lovable-style) */
+.pressable {
+  transition: transform 150ms ease-out, box-shadow 200ms ease-out, border-color 200ms ease-out;
+}
+.pressable:active {
+  transform: scale(0.985);
+}
+
+/* Hide scrollbars */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Skeleton shimmer */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-card) 0%,
+    var(--color-card-hover) 50%,
+    var(--color-card) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+

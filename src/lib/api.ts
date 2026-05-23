@@ -23,6 +23,8 @@ export interface StockEntry {
   stock_label: string
   availability_status: string
   last_check: string
+  store_url?: string
+  store_coord?: string | null
 }
 
 export interface ProductWithStock extends Product {
