@@ -2,10 +2,10 @@ import { useCallback, useEffect, useState } from 'react'
 import { isInTelegram, haptic } from './lib/telegram'
 import { api, type BotStatus, type ProductWithStock } from './lib/api'
 import { MOCK_STATUS, MOCK_STOCK } from './lib/mock'
+import { BriefPage } from './pages/BriefPage'
 import { HomeV2Page } from './pages/HomeV2'
 import { SearchPage } from './pages/SearchPage'
 import { StoresPage } from './pages/StoresPage'
-import { MapPage } from './pages/MapPage'
 import { PortfolioPage } from './pages/PortfolioPage'
 import { Icon } from './components/Icons'
 import { cn } from './lib/cn'
@@ -19,7 +19,7 @@ import {
 } from './lib/preferences'
 import { useGeolocation } from './lib/useGeolocation'
 
-type Tab = 'home' | 'search' | 'stores' | 'map' | 'portfolio'
+type Tab = 'brief' | 'live' | 'search' | 'stores' | 'portfolio'
 
 const useMock = (() => {
   if (typeof window === 'undefined') return false
@@ -31,14 +31,14 @@ export default function App() {
   const [tab, setTab] = useState<Tab>(() => {
     const last = getLastTab()
     if (
-      last === 'home' ||
+      last === 'brief' ||
+      last === 'live' ||
       last === 'search' ||
       last === 'stores' ||
-      last === 'map' ||
       last === 'portfolio'
     )
-      return last
-    return 'home'
+      return last as Tab
+    return 'brief'
   })
 
   const [status, setStatus] = useState<BotStatus | null>(null)
@@ -132,7 +132,15 @@ export default function App() {
         {error && !loading && <ErrorBanner message={error} onRetry={() => load()} />}
 
         <div key={tab} className="animate-page">
-          {tab === 'home' && (
+          {tab === 'brief' && (
+            <BriefPage
+              stock={stock}
+              onProductClick={handleProductClick}
+              refreshing={refreshing}
+              onRefresh={() => load(true)}
+            />
+          )}
+          {tab === 'live' && (
             <HomeV2Page
               status={status}
               stock={stock}
@@ -161,15 +169,6 @@ export default function App() {
               stock={stock}
               favoris={favoris}
               onToggleFavori={handleToggleFavori}
-              userLat={geo.lat}
-              userLng={geo.lng}
-              onRequestGeoloc={geo.request}
-            />
-          )}
-          {tab === 'map' && (
-            <MapPage
-              stock={stock}
-              favoris={favoris}
               userLat={geo.lat}
               userLng={geo.lng}
               onRequestGeoloc={geo.request}
@@ -227,9 +226,9 @@ function BottomNav({
   refreshing: boolean
 }) {
   const tabs: Array<{ id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }> = [
-    { id: 'home', label: 'Live', icon: Icon.Zap },
+    { id: 'brief', label: 'Brief', icon: Icon.Sparkles },
+    { id: 'live', label: 'Live', icon: Icon.Zap },
     { id: 'search', label: 'Chercher', icon: Icon.Search },
-    { id: 'map', label: 'Carte', icon: Icon.Map },
     { id: 'stores', label: 'Magasins', icon: Icon.Store },
     { id: 'portfolio', label: 'Portfolio', icon: Icon.Wallet },
   ]

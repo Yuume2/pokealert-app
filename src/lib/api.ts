@@ -63,6 +63,37 @@ export interface BotStatus {
   products_count: number
 }
 
+export interface CalendrierEntry {
+  id?: number
+  produit_nom: string
+  serie: string
+  type_produit: string
+  date_sortie: string
+  prix_estime: number
+  source_url: string
+  j_minus: number
+  j_minus_today: number
+  priorite: 'critique' | 'haute' | 'moyenne' | 'basse'
+  notes?: string
+}
+
+export interface BriefData {
+  generated_at: string
+  brief: {
+    titre: string
+    contenu: string
+    date: string
+    score_confiance: number
+    next_critique: CalendrierEntry | null
+  }
+  calendrier: {
+    imminent: CalendrierEntry[]
+    future: CalendrierEntry[]
+    past_recent?: CalendrierEntry[]
+    total: number
+  }
+}
+
 class ApiError extends Error {
   status?: number
   constructor(message: string, status?: number) {
@@ -102,6 +133,7 @@ export const api = {
       body: JSON.stringify({ url }),
     }),
   stats: () => fetchJson<StatsData>('/pokealert/stats'),
+  brief: () => fetchJson<BriefData>('/pokealert/brief'),
   togglePause: (paused: boolean) =>
     fetchJson<{ ok: boolean }>('/pokealert/bot/pause', {
       method: 'POST',
