@@ -2,16 +2,24 @@ import { useCallback, useEffect, useState } from 'react'
 import { isInTelegram, haptic } from './lib/telegram'
 import { api, type BotStatus, type ProductWithStock } from './lib/api'
 import { MOCK_STATUS, MOCK_STOCK } from './lib/mock'
-import { HomePage } from './pages/Home'
-import { StockPage } from './pages/Stock'
-import { ProductsPage } from './pages/Products'
-import { StatsPage } from './pages/Stats'
+import { HomeV2Page } from './pages/HomeV2'
+import { SearchPage } from './pages/SearchPage'
+import { StoresPage } from './pages/StoresPage'
+import { MapPage } from './pages/MapPage'
+import { PortfolioPage } from './pages/PortfolioPage'
 import { Icon } from './components/Icons'
 import { cn } from './lib/cn'
 import { ProductDetailSheet } from './components/ProductDetailSheet'
 import { Onboarding } from './components/Onboarding'
+import {
+  getFavorisStores,
+  toggleFavoriStore,
+  getLastTab,
+  setLastTab,
+} from './lib/preferences'
+import { useGeolocation } from './lib/useGeolocation'
 
-type Tab = 'home' | 'stock' | 'products' | 'stats'
+type Tab = 'home' | 'search' | 'stores' | 'map' | 'portfolio'
 
 const useMock = (() => {
   if (typeof window === 'undefined') return false
@@ -20,7 +28,19 @@ const useMock = (() => {
 })()
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>('home')
+  const [tab, setTab] = useState<Tab>(() => {
+    const last = getLastTab()
+    if (
+      last === 'home' ||
+      last === 'search' ||
+      last === 'stores' ||
+      last === 'map' ||
+      last === 'portfolio'
+    )
+      return last
+    return 'home'
+  })
+
   const [status, setStatus] = useState<BotStatus | null>(null)
   const [stock, setStock] = useState<ProductWithStock[]>([])
   const [loading, setLoading] = useState(true)
@@ -29,15 +49,16 @@ export default function App() {
   const [selectedProduct, setSelectedProduct] = useState<ProductWithStock | null>(null)
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [lastFetch, setLastFetch] = useState<number>(0)
+  const [favoris, setFavoris] = useState<Set<string>>(() => getFavorisStores())
+  const [portfolioVersion, setPortfolioVersion] = useState(0)
 
-  // Onboarding au 1er lancement
+  const geo = useGeolocation(false)
+
   useEffect(() => {
     try {
       const seen = localStorage.getItem('pokealert_seen_intro')
       if (!seen) setShowOnboarding(true)
-    } catch {
-      // localStorage indispo (mode privé/incognito), skip
-    }
+    } catch {}
   }, [])
 
   const dismissOnboarding = () => {
@@ -77,7 +98,6 @@ export default function App() {
     return () => clearInterval(interval)
   }, [load])
 
-  // Si selectedProduct change suite à un refresh, le mettre à jour
   useEffect(() => {
     if (selectedProduct) {
       const updated = stock.find((p) => p.id === selectedProduct.id)
@@ -88,7 +108,7 @@ export default function App() {
   const handleTabChange = (next: Tab) => {
     haptic('light')
     setTab(next)
-    // Reset scroll quand on change d'onglet
+    setLastTab(next)
     window.scrollTo({ top: 0, behavior: 'instant' })
   }
 
@@ -97,34 +117,65 @@ export default function App() {
     setSelectedProduct(product)
   }
 
+  const handleToggleFavori = (eagid: string) => {
+    const updated = toggleFavoriStore(eagid)
+    setFavoris(new Set(updated))
+  }
+
+  const handlePurchased = () => {
+    setPortfolioVersion((v) => v + 1)
+  }
+
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground">
+    <div className="min-h-screen flex flex-col bg-transparent text-foreground">
       <main className="flex-1 px-4 pt-3 pb-28 max-w-2xl w-full mx-auto">
         {error && !loading && <ErrorBanner message={error} onRetry={() => load()} />}
 
         <div key={tab} className="animate-page">
           {tab === 'home' && (
-            <HomePage
+            <HomeV2Page
               status={status}
               stock={stock}
               loading={loading}
               refreshing={refreshing}
               lastFetch={lastFetch}
+              favoris={favoris}
+              onToggleFavori={handleToggleFavori}
               onProductClick={handleProductClick}
               onRefresh={() => load(true)}
+              userLat={geo.lat}
+              userLng={geo.lng}
             />
           )}
-          {tab === 'stock' && (
-            <StockPage
+          {tab === 'search' && (
+            <SearchPage
               stock={stock}
-              loading={loading}
+              favoris={favoris}
               onProductClick={handleProductClick}
+              userLat={geo.lat}
+              userLng={geo.lng}
             />
           )}
-          {tab === 'products' && (
-            <ProductsPage stock={stock} loading={loading} onRefresh={() => load(true)} />
+          {tab === 'stores' && (
+            <StoresPage
+              stock={stock}
+              favoris={favoris}
+              onToggleFavori={handleToggleFavori}
+              userLat={geo.lat}
+              userLng={geo.lng}
+              onRequestGeoloc={geo.request}
+            />
           )}
-          {tab === 'stats' && <StatsPage stock={stock} />}
+          {tab === 'map' && (
+            <MapPage
+              stock={stock}
+              favoris={favoris}
+              userLat={geo.lat}
+              userLng={geo.lng}
+              onRequestGeoloc={geo.request}
+            />
+          )}
+          {tab === 'portfolio' && <PortfolioPage refreshKey={portfolioVersion} />}
         </div>
       </main>
 
@@ -132,7 +183,11 @@ export default function App() {
 
       <ProductDetailSheet
         product={selectedProduct}
+        favoris={favoris}
+        userLat={geo.lat}
+        userLng={geo.lng}
         onClose={() => setSelectedProduct(null)}
+        onPurchased={handlePurchased}
       />
 
       {showOnboarding && <Onboarding onClose={dismissOnboarding} />}
@@ -172,33 +227,33 @@ function BottomNav({
   refreshing: boolean
 }) {
   const tabs: Array<{ id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }> = [
-    { id: 'home', label: 'Accueil', icon: Icon.Home },
-    { id: 'stock', label: 'Stock', icon: Icon.LayoutGrid },
-    { id: 'products', label: 'Produits', icon: Icon.ListChecks },
-    { id: 'stats', label: 'Stats', icon: Icon.TrendingUp },
+    { id: 'home', label: 'Live', icon: Icon.Zap },
+    { id: 'search', label: 'Chercher', icon: Icon.Search },
+    { id: 'map', label: 'Carte', icon: Icon.Map },
+    { id: 'stores', label: 'Magasins', icon: Icon.Store },
+    { id: 'portfolio', label: 'Portfolio', icon: Icon.Wallet },
   ]
 
   return (
     <nav
-      className={cn(
-        'fixed bottom-0 left-0 right-0 z-50',
-        'border-t border-border bg-background/80 backdrop-blur-2xl',
-      )}
+      className={cn('fixed bottom-0 left-0 right-0 z-50', 'border-t border-border glass')}
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-      {/* Refresh indicator */}
       {refreshing && (
         <div className="absolute top-0 left-0 right-0 h-0.5 overflow-hidden">
-          <div className="h-full bg-primary animate-shimmer" style={{
-            background: 'linear-gradient(90deg, transparent, var(--color-primary), transparent)',
-            backgroundSize: '200% 100%',
-            animation: 'shimmer 1.4s linear infinite',
-          }} />
+          <div
+            className="h-full"
+            style={{
+              background: 'linear-gradient(90deg, transparent, var(--color-primary), transparent)',
+              backgroundSize: '200% 100%',
+              animation: 'shimmer 1.4s linear infinite',
+            }}
+          />
         </div>
       )}
 
       <div className="max-w-2xl mx-auto px-2">
-        <div className="grid grid-cols-4">
+        <div className="grid grid-cols-5">
           {tabs.map((t) => {
             const isActive = current === t.id
             return (
@@ -208,7 +263,7 @@ function BottomNav({
                 className="relative flex flex-col items-center gap-0.5 py-3 transition-colors group"
               >
                 {isActive && (
-                  <span className="absolute top-0 left-1/2 -translate-x-1/2 h-0.5 w-8 bg-primary rounded-full" />
+                  <span className="absolute top-0 left-1/2 -translate-x-1/2 h-0.5 w-8 bg-primary rounded-full shadow-[0_0_8px_-1px_var(--color-primary-glow)]" />
                 )}
                 <t.icon
                   className={cn(
@@ -218,7 +273,7 @@ function BottomNav({
                 />
                 <span
                   className={cn(
-                    'text-[10px] font-medium tracking-tight transition-colors',
+                    'text-[10px] font-semibold tracking-tight transition-colors',
                     isActive ? 'text-foreground' : 'text-muted-foreground',
                   )}
                 >

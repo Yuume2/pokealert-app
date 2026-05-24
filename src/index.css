@@ -1,52 +1,57 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap");
 @import "tailwindcss";
 
 /* =========================================================
-   Design system — PokeAlert
-   Palette éditoriale dark, typo serif éditoriale,
-   inspirée de produits premium (Linear, Vercel, Lovable).
+   PokeAlert v2 — Pro, propre, moderne, violet
+   Inspiré Linear / Robinhood / Notion
    ========================================================= */
 
 @theme {
-  /* Base */
-  --color-background: #0a0a0c;
-  --color-surface: #0e0e10;
-  --color-card: #131316;
-  --color-card-hover: #181820;
-  --color-border: #1f1f24;
-  --color-border-strong: #2a2a32;
+  /* Base — dark profond */
+  --color-background: #08070d;
+  --color-surface: #0d0c14;
+  --color-card: #14121d;
+  --color-card-hover: #1c1929;
+  --color-card-elevated: #1f1c2d;
+  --color-border: #221f30;
+  --color-border-strong: #2e2a42;
 
   /* Text */
-  --color-foreground: #fafaf9;
-  --color-muted-foreground: #8a8a93;
-  --color-subtle-foreground: #5c5c63;
+  --color-foreground: #fafafa;
+  --color-muted-foreground: #908ba8;
+  --color-subtle-foreground: #5e5a73;
 
-  /* Brand — gold/amber (collector vibe Pokémon, sobre) */
-  --color-primary: #d4a857;
-  --color-primary-foreground: #1a1410;
-  --color-primary-muted: rgba(212, 168, 87, 0.12);
-  --color-primary-border: rgba(212, 168, 87, 0.28);
+  /* Brand — violet/indigo électrique */
+  --color-primary: #8b5cf6;
+  --color-primary-hover: #a78bfa;
+  --color-primary-foreground: #ffffff;
+  --color-primary-muted: rgba(139, 92, 246, 0.12);
+  --color-primary-border: rgba(139, 92, 246, 0.32);
+  --color-primary-glow: rgba(139, 92, 246, 0.4);
 
   /* Accents */
-  --color-success: #4ade80;
-  --color-success-muted: rgba(74, 222, 128, 0.12);
-  --color-warning: #f59e0b;
-  --color-warning-muted: rgba(245, 158, 11, 0.12);
-  --color-destructive: #ef4444;
-  --color-destructive-muted: rgba(239, 68, 68, 0.12);
+  --color-success: #10d97a;
+  --color-success-muted: rgba(16, 217, 122, 0.12);
+  --color-warning: #fbbf24;
+  --color-warning-muted: rgba(251, 191, 36, 0.12);
+  --color-destructive: #f43f5e;
+  --color-destructive-muted: rgba(244, 63, 94, 0.12);
+  --color-hot: #ff5b5b;
+  --color-hot-muted: rgba(255, 91, 91, 0.12);
 
   /* Typography */
   --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
-  --font-display: "Instrument Serif", "Times New Roman", Georgia, serif;
+  --font-display: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-serif: "Instrument Serif", "Times New Roman", Georgia, serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
 
   /* Shadows */
   --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.04);
   --shadow-lift: 0 20px 40px -20px rgba(0, 0, 0, 0.6), 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-glow: 0 0 32px -8px rgba(212, 168, 87, 0.4);
+  --shadow-glow: 0 0 32px -8px rgba(139, 92, 246, 0.5);
+  --shadow-glow-strong: 0 0 60px -10px rgba(139, 92, 246, 0.7);
 }
 
-/* Telegram theme override (when running inside Telegram) */
 :root {
   color-scheme: dark;
 }
@@ -67,6 +72,11 @@ html, body, #root {
 body {
   overscroll-behavior-y: none;
   text-rendering: optimizeLegibility;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(139, 92, 246, 0.15), transparent 70%),
+    radial-gradient(ellipse 60% 40% at 80% 100%, rgba(244, 63, 94, 0.05), transparent 60%),
+    var(--color-background);
+  background-attachment: fixed;
 }
 
 * {
@@ -74,13 +84,15 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Aurora gradients — used as bg accents */
+/* Auroras */
 .aurora-primary {
-  background: radial-gradient(circle at 50% 0%, rgba(212, 168, 87, 0.15) 0%, transparent 60%);
+  background: radial-gradient(circle at 50% 0%, rgba(139, 92, 246, 0.2) 0%, transparent 60%);
 }
-
-.aurora-warm {
-  background: radial-gradient(circle at 80% 20%, rgba(239, 68, 68, 0.08) 0%, transparent 50%);
+.aurora-hot {
+  background: radial-gradient(circle at 50% 50%, rgba(255, 91, 91, 0.18) 0%, transparent 60%);
+}
+.aurora-success {
+  background: radial-gradient(circle at 50% 50%, rgba(16, 217, 122, 0.15) 0%, transparent 60%);
 }
 
 /* Number tabular */
@@ -89,69 +101,56 @@ body {
   font-feature-settings: "tnum";
 }
 
-/* Press effect (Lovable-style) */
+/* Press */
 .pressable {
-  transition: transform 150ms ease-out, box-shadow 200ms ease-out, border-color 200ms ease-out;
+  transition: transform 150ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 200ms ease-out, border-color 200ms ease-out, background 200ms ease-out;
 }
 .pressable:active {
-  transform: scale(0.985);
+  transform: scale(0.97);
 }
 
-/* Hide scrollbars */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
+/* Scrollbars */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-/* Page transitions */
+/* Animations */
 @keyframes fade-in-up {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
 }
-.animate-page {
-  animation: fade-in-up 350ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
+.animate-page { animation: fade-in-up 400ms cubic-bezier(0.22, 1, 0.36, 1) both; }
 
 @keyframes fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
 }
-.animate-fade-in {
-  animation: fade-in 250ms ease-out both;
-}
+.animate-fade-in { animation: fade-in 250ms ease-out both; }
 
 @keyframes sheet-up {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
-.animate-sheet-up {
-  animation: sheet-up 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
+.animate-sheet-up { animation: sheet-up 320ms cubic-bezier(0.22, 1, 0.36, 1) both; }
 
 @keyframes scale-in {
-  from {
-    opacity: 0;
-    transform: scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+  from { opacity: 0; transform: scale(0.94); }
+  to { opacity: 1; transform: scale(1); }
 }
-.animate-scale-in {
-  animation: scale-in 200ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
+.animate-scale-in { animation: scale-in 250ms cubic-bezier(0.22, 1, 0.36, 1) both; }
 
-/* Skeleton shimmer */
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(16, 217, 122, 0.6); }
+  50% { box-shadow: 0 0 0 8px rgba(16, 217, 122, 0); }
+}
+.animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+
+@keyframes pulse-hot {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 91, 91, 0.7); }
+  50% { box-shadow: 0 0 0 10px rgba(255, 91, 91, 0); }
+}
+.animate-pulse-hot { animation: pulse-hot 1.4s ease-in-out infinite; }
+
+/* Skeleton */
 @keyframes shimmer {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
@@ -167,3 +166,15 @@ body {
   animation: shimmer 1.8s ease-in-out infinite;
 }
 
+/* Glass card effect */
+.glass {
+  background: rgba(20, 18, 29, 0.6);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Glow text */
+.text-glow {
+  text-shadow: 0 0 24px rgba(139, 92, 246, 0.6);
+}

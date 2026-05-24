@@ -1,186 +1,232 @@
+import { useState } from 'react'
 import { Sheet } from './Sheet'
-import { Eyebrow, Badge, Button } from './ui'
+import { Eyebrow, Badge, Button, Card, HeatScore } from './ui'
 import { Icon } from './Icons'
 import { cn } from '../lib/cn'
 import { haptic, openExternal } from '../lib/telegram'
 import { formatRelativeLong, useLiveTime } from '../lib/useLiveTime'
 import type { ProductWithStock, StockEntry } from '../lib/api'
+import { addPurchase, getPortfolio } from '../lib/preferences'
+import { heatScore } from '../lib/search'
+import { getStoreByEagid, formatDistance, haversineKm } from '../lib/stores'
 
 interface Props {
   product: ProductWithStock | null
+  favoris: Set<string>
+  userLat?: number
+  userLng?: number
   onClose: () => void
+  onPurchased?: () => void
 }
 
-export function ProductDetailSheet({ product, onClose }: Props) {
+export function ProductDetailSheet({
+  product,
+  favoris,
+  userLat,
+  userLng,
+  onClose,
+  onPurchased,
+}: Props) {
   useLiveTime(30_000)
-
   return (
     <Sheet open={!!product} onClose={onClose}>
-      {product && <ProductDetailContent product={product} />}
+      {product && (
+        <Content
+          product={product}
+          favoris={favoris}
+          userLat={userLat}
+          userLng={userLng}
+          onPurchased={() => {
+            onPurchased?.()
+          }}
+        />
+      )}
     </Sheet>
   )
 }
 
-function ProductDetailContent({ product }: { product: ProductWithStock }) {
-  const inStockStocks = product.stocks
-  const favoris = inStockStocks.filter((s) => s.magasin_favori)
-  const others = inStockStocks.filter((s) => !s.magasin_favori)
+function Content({
+  product,
+  favoris,
+  userLat,
+  userLng,
+  onPurchased,
+}: {
+  product: ProductWithStock
+  favoris: Set<string>
+  userLat?: number
+  userLng?: number
+  onPurchased: () => void
+}) {
+  const inStock = product.stocks.filter(
+    (s) =>
+      s.stock_label === 'En rayon' || s.stock_label === 'En rayon- Quantité limitée',
+  )
 
-  const handleOpenFnac = () => {
-    haptic('medium')
-    openExternal(`https://www.fnac.com/a${product.prid}/w-4`)
-  }
+  const sortedStocks = inStock
+    .map((s) => {
+      const info = getStoreByEagid(s.eagid)
+      const distance =
+        info && userLat != null && userLng != null
+          ? haversineKm(userLat, userLng, info.lat, info.lng)
+          : undefined
+      return { stock: s, info, distance, isFavori: favoris.has(s.eagid) }
+    })
+    .sort((a, b) => {
+      if (a.isFavori !== b.isFavori) return a.isFavori ? -1 : 1
+      if (a.distance != null && b.distance != null) return a.distance - b.distance
+      return 0
+    })
+
+  const heat = heatScore(product, favoris)
+  const portfolioCount = getPortfolio().filter((p) => p.prid === product.prid).length
 
   const TypeIcon =
-    product.type_produit === 'ETB' ? Icon.Box
-      : product.type_produit === 'Bundle' ? Icon.Package
+    product.type_produit === 'ETB'
+      ? Icon.Box
+      : product.type_produit === 'Bundle'
+        ? Icon.Package
         : Icon.LayoutGrid
 
   return (
-    <div className="px-5 pt-8 pb-8 space-y-6">
-      {/* Hero image + meta */}
-      <ProductHero product={product} />
+    <div className="px-5 pt-8 pb-8 space-y-5">
+      <HeroBlock product={product} heat={heat} />
 
-      {/* Type + Série */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary-muted text-primary">
-            <TypeIcon className="h-3.5 w-3.5" />
-          </div>
-          <Eyebrow>{product.type_produit}</Eyebrow>
-          <span className="text-subtle-foreground">·</span>
-          <span className="text-[11px] font-medium text-muted-foreground">
-            {cleanSerie(product.serie)}
-          </span>
-        </div>
-
-        <h1
-          className="font-display text-[1.875rem] leading-[1.1] tracking-tight text-foreground"
-          style={{ fontFamily: 'var(--font-display)' }}
-        >
-          {cleanProductName(product.nom)}
-        </h1>
-
-        <ProductMetaRow product={product} />
+      <div className="flex items-center gap-2 flex-wrap">
+        <Badge variant="primary">
+          <TypeIcon className="h-2.5 w-2.5" />
+          {product.type_produit}
+        </Badge>
+        <Badge>{cleanSerie(product.serie)}</Badge>
+        {portfolioCount > 0 && (
+          <Badge variant="success">
+            <Icon.Wallet className="h-2.5 w-2.5" />
+            {portfolioCount} dans portfolio
+          </Badge>
+        )}
       </div>
 
-      {/* Stock breakdown */}
-      <StockBreakdown
-        title="Magasins prioritaires"
-        eyebrow="Tes magasins"
-        stocks={favoris}
+      <h1 className="text-[1.5rem] leading-[1.15] font-bold text-foreground tracking-[-0.02em]">
+        {cleanName(product.nom)}
+      </h1>
+
+      <PurchaseBlock
+        product={product}
+        inStock={inStock}
+        onPurchased={onPurchased}
+        firstStock={sortedStocks[0]}
       />
 
-      <StockBreakdown
-        title="Autres magasins"
-        eyebrow="Périphérie"
-        stocks={others}
-        hidden={favoris.length === 0 && others.length === 0}
-      />
+      <MarginBlock product={product} />
 
-      {/* Empty state si rien partout */}
-      {inStockStocks.length === 0 && (
-        <div className="rounded-2xl border border-border bg-card p-5 text-center">
+      {sortedStocks.length > 0 ? (
+        <section className="space-y-3">
+          <div className="flex items-center justify-between px-1">
+            <div>
+              <Eyebrow>Disponible dans</Eyebrow>
+              <p className="text-[13px] font-semibold text-foreground mt-0.5">
+                {sortedStocks.length} magasin{sortedStocks.length > 1 ? 's' : ''}
+              </p>
+            </div>
+            {sortedStocks.length > 1 && (
+              <button
+                onClick={() => {
+                  haptic('medium')
+                  const url = buildMultiTripUrl(sortedStocks.slice(0, 4).map((s) => s.info!).filter(Boolean) as Array<{ lat: number; lng: number }>)
+                  openExternal(url)
+                }}
+                className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-primary hover:text-primary-hover transition-colors"
+              >
+                <Icon.Route className="h-3.5 w-3.5" />
+                Trajet RER
+              </button>
+            )}
+          </div>
+
+          <Card className="overflow-hidden">
+            {sortedStocks.map((s, i) => (
+              <StoreEntry
+                key={s.stock.eagid}
+                stock={s.stock}
+                shortName={s.info?.short ?? s.stock.magasin_nom}
+                distance={s.distance}
+                isFavori={s.isFavori}
+                mapsUrl={s.info?.mapsUrl ?? ''}
+                isFirst={i === 0}
+              />
+            ))}
+          </Card>
+        </section>
+      ) : (
+        <Card className="p-5 text-center">
           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-card-hover text-muted-foreground">
             <Icon.Clock className="h-5 w-5" />
           </div>
-          <p className="text-sm font-semibold text-foreground">Pas en rayon actuellement</p>
-          <p className="mt-1 text-xs text-muted-foreground max-w-xs mx-auto leading-relaxed">
+          <p className="text-sm font-semibold text-foreground">Pas en rayon</p>
+          <p className="mt-1 text-xs text-muted-foreground max-w-xs mx-auto">
             Le bot te préviendra dès qu'un magasin met ce produit en rayon.
           </p>
-        </div>
+        </Card>
       )}
 
-      {/* Actions */}
-      <div className="space-y-2 pt-2">
-        <Button onClick={handleOpenFnac} variant="primary" size="lg" className="w-full">
-          Voir sur FNAC
-          <Icon.ArrowUpRight className="h-4 w-4" />
-        </Button>
-      </div>
-
-      {/* Info technique */}
-      <ProductTechInfo product={product} />
+      <Button
+        variant="secondary"
+        className="w-full"
+        size="md"
+        onClick={() => {
+          haptic('light')
+          openExternal(`https://www.fnac.com/a${product.prid}/w-4`)
+        }}
+      >
+        Voir la fiche FNAC
+        <Icon.ArrowUpRight className="h-3.5 w-3.5" />
+      </Button>
     </div>
   )
 }
 
-function ProductHero({ product }: { product: ProductWithStock }) {
-  // Image officielle FNAC : utilise leur CDN d'images standardisé via prid
-  // Format: https://static.fnac-static.com/multimedia/Images/FR/NR/{prefix}/{prid}/standard.jpg
-  // Fallback: image placeholder gradient si l'image n'existe pas
-
+function HeroBlock({ product, heat }: { product: ProductWithStock; heat: number }) {
   const imgUrl = getFnacImageUrl(product.prid)
-  const TypeIcon =
-    product.type_produit === 'ETB' ? Icon.Box
-      : product.type_produit === 'Bundle' ? Icon.Package
-        : Icon.LayoutGrid
 
   return (
-    <div className="relative aspect-[16/10] rounded-3xl border border-border bg-card overflow-hidden">
-      {/* Aurora background */}
-      <div className="absolute inset-0 aurora-primary opacity-60" />
+    <div className="relative aspect-[16/9] rounded-2xl border border-border bg-card-elevated overflow-hidden">
+      <div className="absolute inset-0 aurora-primary opacity-50" />
+      <div
+        className="absolute inset-0 opacity-[0.04]"
+        style={{
+          backgroundImage:
+            'radial-gradient(circle at 1px 1px, white 1px, transparent 0)',
+          backgroundSize: '24px 24px',
+        }}
+      />
 
-      {/* Decorative pattern */}
-      <div className="absolute inset-0 opacity-[0.03]" style={{
-        backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)',
-        backgroundSize: '24px 24px',
-      }} />
+      <img
+        src={imgUrl}
+        alt={product.nom}
+        className="absolute inset-0 w-full h-full object-contain p-6 drop-shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
+        onError={(e) => {
+          ;(e.target as HTMLImageElement).style.display = 'none'
+        }}
+      />
 
-      {/* Image ou icon */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        <img
-          src={imgUrl}
-          alt={product.nom}
-          className="max-h-[80%] max-w-[80%] object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
-          onError={(e) => {
-            // Fallback gracieux : cache l'image
-            ;(e.target as HTMLImageElement).style.display = 'none'
-            ;(e.target as HTMLImageElement).parentElement?.classList.add('show-fallback')
-          }}
-        />
-      </div>
-
-      {/* Fallback icon (shown si image fail) */}
-      <div className="show-fallback-target absolute inset-0 flex items-center justify-center text-primary opacity-40" style={{ display: 'none' }}>
-        <TypeIcon className="h-20 w-20" strokeWidth={1} />
-      </div>
-
-      {/* Stock badge en haut */}
-      <div className="absolute top-3 left-3 flex items-center gap-1.5">
-        {product.in_stock_count > 0 ? (
-          <Badge variant="success">
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="absolute inset-0 rounded-full bg-success animate-ping opacity-75" />
-              <span className="relative h-1.5 w-1.5 rounded-full bg-success" />
+      <div className="absolute top-3 left-3">
+        {heat > 0 && (
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-background/70 backdrop-blur-md border border-border">
+            <HeatScore score={heat} size="sm" />
+            <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-foreground">
+              Chaleur {heat}/5
             </span>
-            {product.in_stock_count} magasin{product.in_stock_count > 1 ? 's' : ''}
-          </Badge>
-        ) : (
-          <Badge variant="default">
-            <Icon.Clock className="h-2.5 w-2.5" />
-            En attente
-          </Badge>
-        )}
-        {product.in_stock_favoris > 0 && (
-          <Badge variant="primary">
-            <Icon.Flame className="h-2.5 w-2.5" />
-            Prioritaire
-          </Badge>
+          </div>
         )}
       </div>
 
-      {/* Prix en bas */}
       <div className="absolute bottom-3 right-3">
-        <div className="rounded-2xl border border-border bg-background/80 backdrop-blur-xl px-3.5 py-2 text-right">
-          <p
-            className="font-display text-2xl leading-none tabular-nums text-foreground"
-            style={{ fontFamily: 'var(--font-display)' }}
-          >
-            {product.prix_fnac.toFixed(2)} €
+        <div className="rounded-xl border border-border bg-background/80 backdrop-blur-xl px-3 py-1.5 text-right">
+          <p className="text-xl leading-none tabular-nums text-foreground font-bold">
+            {product.prix_fnac.toFixed(2)}€
           </p>
-          <p className="mt-0.5 text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-            prix retail
+          <p className="mt-0.5 text-[9px] uppercase tracking-[0.12em] text-muted-foreground">
+            retail
           </p>
         </div>
       </div>
@@ -188,158 +234,288 @@ function ProductHero({ product }: { product: ProductWithStock }) {
   )
 }
 
-function ProductMetaRow({ product }: { product: ProductWithStock }) {
+function PurchaseBlock({
+  product,
+  inStock,
+  onPurchased,
+  firstStock,
+}: {
+  product: ProductWithStock
+  inStock: StockEntry[]
+  onPurchased: () => void
+  firstStock?: { stock: StockEntry; info?: { short: string } }
+}) {
+  const [showConfirm, setShowConfirm] = useState(false)
+  const [savedAt, setSavedAt] = useState<number | null>(null)
+
+  const handleClick = () => {
+    haptic('medium')
+    setShowConfirm(true)
+  }
+
+  const handleConfirm = (magasin: string) => {
+    haptic('medium')
+    addPurchase({
+      prid: product.prid,
+      produit_nom: cleanName(product.nom),
+      type_produit: product.type_produit,
+      prix_achat: product.prix_fnac,
+      magasin,
+      date: new Date().toISOString(),
+    })
+    setSavedAt(Date.now())
+    setShowConfirm(false)
+    onPurchased()
+    setTimeout(() => setSavedAt(null), 3000)
+  }
+
+  if (savedAt) {
+    return (
+      <Card className="p-4 border-success/30 bg-success-muted flex items-center gap-3">
+        <Icon.Check className="h-5 w-5 text-success shrink-0" />
+        <div>
+          <p className="text-[13px] font-semibold text-foreground">Ajouté au portfolio</p>
+          <p className="text-[11px] text-muted-foreground">
+            Tu peux noter le prix de revente plus tard depuis Portfolio
+          </p>
+        </div>
+      </Card>
+    )
+  }
+
+  if (showConfirm && inStock.length > 0) {
+    return (
+      <Card className="p-4 space-y-3 border-primary-border bg-primary-muted/50">
+        <div className="flex items-center justify-between">
+          <Eyebrow>Tu l'as pris où ?</Eyebrow>
+          <button
+            onClick={() => setShowConfirm(false)}
+            className="text-[11px] text-muted-foreground hover:text-foreground"
+          >
+            Annuler
+          </button>
+        </div>
+        <div className="space-y-2">
+          {inStock.slice(0, 5).map((s) => {
+            const info = getStoreByEagid(s.eagid)
+            return (
+              <button
+                key={s.eagid}
+                onClick={() => handleConfirm(info?.short ?? s.magasin_nom)}
+                className="w-full flex items-center justify-between gap-2 p-2.5 rounded-xl bg-card hover:bg-card-hover border border-border text-left transition-all active:scale-[0.98]"
+              >
+                <span className="text-[13px] font-medium text-foreground">
+                  {info?.short ?? s.magasin_nom}
+                </span>
+                <Icon.ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+              </button>
+            )
+          })}
+        </div>
+      </Card>
+    )
+  }
+
   return (
-    <div className="flex items-center gap-2 text-[11px] text-muted-foreground flex-wrap">
-      <span className="inline-flex items-center gap-1">
-        <Icon.Box className="h-2.5 w-2.5" />
-        Réf. {product.prid}
-      </span>
-      <span className="text-subtle-foreground">·</span>
-      <span className="inline-flex items-center gap-1">
-        <Icon.Activity className="h-2.5 w-2.5" />
-        {product.actif ? 'Surveillé' : 'Désactivé'}
-      </span>
+    <Button
+      variant="primary"
+      size="lg"
+      className="w-full"
+      onClick={handleClick}
+      disabled={inStock.length === 0}
+    >
+      <Icon.ShoppingBag className="h-4 w-4" />
+      {inStock.length > 0
+        ? `J'ai pris à ${firstStock?.info?.short ?? 'un magasin'}`
+        : 'Pas en rayon actuellement'}
+    </Button>
+  )
+}
+
+function MarginBlock({ product }: { product: ProductWithStock }) {
+  const estimations = estimateMargin(product)
+  return (
+    <Card className="p-4">
+      <div className="flex items-center justify-between mb-3">
+        <Eyebrow>Marge revente estimée</Eyebrow>
+        <Badge variant="warning">Beta</Badge>
+      </div>
+      <div className="grid grid-cols-3 gap-3">
+        <MarginCell label="Vinted" price={estimations.vinted} margin={estimations.vinted - product.prix_fnac} />
+        <MarginCell label="Marketplace" price={estimations.marketplace} margin={estimations.marketplace - product.prix_fnac} />
+        <MarginCell label="eBay" price={estimations.ebay} margin={estimations.ebay - product.prix_fnac} />
+      </div>
+      <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
+        <div>
+          <Eyebrow>Moyenne marge</Eyebrow>
+          <p className="text-[1.25rem] font-bold tabular-nums text-success mt-0.5">
+            +{Math.round(estimations.avgMargin)}€
+          </p>
+        </div>
+        <Badge variant="success">
+          {((estimations.avgMargin / product.prix_fnac) * 100).toFixed(0)}% ROI
+        </Badge>
+      </div>
+      <p className="mt-2 text-[10px] text-muted-foreground">
+        Estimations indicatives basées sur ratios marché. Connexion live Vinted/eBay à venir.
+      </p>
+    </Card>
+  )
+}
+
+function MarginCell({ label, price, margin }: { label: string; price: number; margin: number }) {
+  return (
+    <div>
+      <Eyebrow>{label}</Eyebrow>
+      <p className="text-base font-bold tabular-nums text-foreground mt-0.5">
+        {Math.round(price)}€
+      </p>
+      <p
+        className={cn(
+          'text-[10px] font-semibold tabular-nums mt-0.5',
+          margin > 0 ? 'text-success' : 'text-destructive',
+        )}
+      >
+        {margin >= 0 ? '+' : ''}
+        {Math.round(margin)}€
+      </p>
     </div>
   )
 }
 
-function StockBreakdown({
-  title,
-  eyebrow,
-  stocks,
-  hidden,
+function StoreEntry({
+  stock,
+  shortName,
+  distance,
+  isFavori,
+  mapsUrl,
+  isFirst,
 }: {
-  title: string
-  eyebrow: string
-  stocks: StockEntry[]
-  hidden?: boolean
+  stock: StockEntry
+  shortName: string
+  distance?: number
+  isFavori: boolean
+  mapsUrl: string
+  isFirst: boolean
 }) {
-  if (hidden) return null
-  if (stocks.length === 0) return null
-
-  return (
-    <section className="space-y-3">
-      <div>
-        <Eyebrow>{eyebrow}</Eyebrow>
-        <h3 className="mt-1 text-sm font-semibold text-foreground">{title}</h3>
-      </div>
-      <div className="rounded-2xl border border-border bg-card overflow-hidden">
-        {stocks.map((s, i) => (
-          <StoreDetailRow key={s.eagid} stock={s} isFirst={i === 0} />
-        ))}
-      </div>
-    </section>
-  )
-}
-
-function StoreDetailRow({ stock, isFirst }: { stock: StockEntry; isFirst: boolean }) {
   const isLimited = stock.stock_label?.includes('limitée') ?? false
 
   const handleClick = () => {
     haptic('light')
-    const cleanCoord = stock.store_coord?.replace(/[()]/g, '')
-    const url = cleanCoord
-      ? `https://www.google.com/maps/search/?api=1&query=${cleanCoord}`
-      : stock.store_url ?? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(stock.magasin_nom)}`
-    openExternal(url)
+    if (mapsUrl) openExternal(mapsUrl)
   }
 
   return (
     <button
       onClick={handleClick}
       className={cn(
-        'group w-full flex items-center justify-between gap-3 px-4 py-3 text-left',
-        'hover:bg-card-hover active:bg-card-hover transition-colors',
+        'group w-full flex items-center justify-between gap-3 px-4 py-3 text-left pressable',
+        'hover:bg-card-hover',
         !isFirst && 'border-t border-border',
       )}
     >
-      <div className="flex items-center gap-3 min-w-0">
+      <div className="flex items-center gap-3 min-w-0 flex-1">
         <div
           className={cn(
             'flex h-9 w-9 items-center justify-center rounded-xl shrink-0',
-            stock.magasin_favori
+            isFavori
               ? 'bg-primary-muted text-primary'
-              : 'bg-card-hover text-muted-foreground border border-border',
+              : 'bg-card text-muted-foreground border border-border',
           )}
         >
-          {stock.magasin_favori
-            ? <Icon.Flame className="h-4 w-4" />
-            : <Icon.MapPin className="h-4 w-4" />}
+          {isFavori ? (
+            <Icon.Star className="h-3.5 w-3.5" fill="currentColor" strokeWidth={0} />
+          ) : (
+            <Icon.MapPin className="h-3.5 w-3.5" />
+          )}
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-semibold text-foreground truncate">
-            {cleanStoreName(stock.magasin_nom)}
-          </p>
+        <div className="min-w-0">
+          <p className="text-[13px] font-semibold text-foreground truncate">{shortName}</p>
           <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
             <span className="inline-flex items-center gap-1">
-              <span className={cn(
-                'h-1.5 w-1.5 rounded-full',
-                isLimited ? 'bg-warning' : 'bg-success',
-              )} />
-              {isLimited ? 'Quantité limitée' : 'En rayon'}
+              <span
+                className={cn(
+                  'h-1.5 w-1.5 rounded-full',
+                  isLimited ? 'bg-warning' : 'bg-success',
+                )}
+              />
+              {isLimited ? 'Limité' : 'En rayon'}
             </span>
+            {distance != null && (
+              <>
+                <span className="text-subtle-foreground">·</span>
+                <span className="tabular-nums">{formatDistance(distance)}</span>
+              </>
+            )}
             <span className="text-subtle-foreground">·</span>
             <span>{formatRelativeLong(stock.last_check)}</span>
           </div>
         </div>
       </div>
-      <Icon.ArrowUpRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
+      <Icon.Navigation className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
     </button>
   )
 }
 
-function ProductTechInfo({ product }: { product: ProductWithStock }) {
-  const lastUpdate = product.stocks[0]?.last_check
-  return (
-    <div className="rounded-2xl border border-border bg-card/50 p-4 space-y-2">
-      <div className="flex items-center gap-2">
-        <Icon.Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
-        <Eyebrow>Détails techniques</Eyebrow>
-      </div>
-      <dl className="space-y-1.5 text-[11px]">
-        <InfoRow label="Référence FNAC" value={`a${product.prid}`} mono />
-        <InfoRow label="Série complète" value={product.serie} />
-        <InfoRow label="Format" value={typeLabel(product.type_produit)} />
-        <InfoRow label="Statut monitoring" value={product.actif ? 'Actif' : 'Désactivé'} />
-        {lastUpdate && (
-          <InfoRow label="Dernière vérification" value={formatRelativeLong(lastUpdate)} />
-        )}
-      </dl>
-    </div>
-  )
+function estimateMargin(product: ProductWithStock) {
+  const base = product.prix_fnac
+  let vintedMult = 1.4
+  let marketMult = 1.5
+  let ebayMult = 1.55
+
+  if (product.type_produit === 'ETB') {
+    if (product.serie.includes('Chaos')) {
+      vintedMult = 1.45
+      marketMult = 1.7
+      ebayMult = 1.6
+    } else if (product.serie.includes('Heros') || product.serie.includes('Transcendants')) {
+      vintedMult = 1.35
+      marketMult = 1.55
+      ebayMult = 1.5
+    } else {
+      vintedMult = 1.5
+      marketMult = 1.8
+      ebayMult = 1.7
+    }
+  } else if (product.type_produit === 'Bundle') {
+    vintedMult = 1.25
+    marketMult = 1.35
+    ebayMult = 1.4
+  } else {
+    vintedMult = 1.2
+    marketMult = 1.3
+    ebayMult = 1.3
+  }
+
+  const vinted = base * vintedMult
+  const marketplace = base * marketMult
+  const ebay = base * ebayMult
+  const avg = (vinted + marketplace + ebay) / 3
+  const avgMargin = avg - base
+
+  return { vinted, marketplace, ebay, avg, avgMargin }
 }
 
-function InfoRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
-  return (
-    <div className="flex justify-between gap-3">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className={cn(
-        'text-foreground font-medium text-right',
-        mono && 'font-mono text-[10px]',
-      )}>
-        {value}
-      </dd>
-    </div>
-  )
-}
-
-function typeLabel(type: string): string {
-  if (type === 'ETB') return "Coffret Dresseur d'Élite (9 boosters)"
-  if (type === 'Bundle') return 'Bundle 6 boosters'
-  if (type === 'Tripack') return 'Pack 3 boosters'
-  return type
+function buildMultiTripUrl(stores: Array<{ lat: number; lng: number }>): string {
+  if (stores.length === 0) return 'https://www.google.com/maps'
+  if (stores.length === 1)
+    return `https://www.google.com/maps/dir/?api=1&destination=${stores[0].lat},${stores[0].lng}&travelmode=transit`
+  const origin = `${stores[0].lat},${stores[0].lng}`
+  const dest = `${stores[stores.length - 1].lat},${stores[stores.length - 1].lng}`
+  const waypoints = stores
+    .slice(1, -1)
+    .map((s) => `${s.lat},${s.lng}`)
+    .join('|')
+  return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}${waypoints ? `&waypoints=${waypoints}` : ''}&travelmode=transit`
 }
 
 function getFnacImageUrl(prid: string): string {
-  // Format CDN FNAC : décomposer prid en sous-dossiers
-  // ex: prid=22390738 → /multimedia/Images/FR/NR/22/39/07/22390738/standard.jpg
   if (!prid || prid.length < 8) return ''
   const path = prid.match(/.{1,2}/g)?.slice(0, 3).join('/') ?? ''
   return `https://static.fnac-static.com/multimedia/Images/FR/NR/${path}/${prid}/standard.jpg`
 }
 
-function cleanProductName(name: string): string {
+function cleanName(name: string): string {
   return name
     .replace(/^(Carte|Cartes) à collectionner Pokémon\s*/i, '')
     .replace(/^Pokémon\s+/i, '')
@@ -347,13 +523,5 @@ function cleanProductName(name: string): string {
 }
 
 function cleanSerie(serie: string): string {
-  return serie || '—'
-}
-
-function cleanStoreName(name: string): string {
-  return name
-    .replace(/^FNAC\s+/, '')
-    .replace(/^Paris\s+-?\s*/, '')
-    .replace(/\s*\(rue de Rennes\)$/, '')
-    .replace(/-CNIT$/, ' · CNIT')
+  return serie.replace(/^(ME\d+|EV\d+(?:\.\d+)?|Q\d+)\s*/, '').trim() || serie
 }
