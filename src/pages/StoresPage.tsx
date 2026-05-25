@@ -50,15 +50,17 @@ export function StoresPage({
   const favStores = ranked.filter((s) => s.isFavori)
   const otherStores = ranked.filter((s) => !s.isFavori)
 
+  const totalInStock = Array.from(stockCountByStore.values()).reduce((a, b) => a + b, 0)
+
   return (
     <div className="space-y-5">
-      <header className="pt-3 pb-1">
-        <Eyebrow>Mes magasins</Eyebrow>
-        <h1 className="mt-1 text-[2rem] font-bold tracking-[-0.03em] leading-[1.1] text-foreground">
-          Choisis tes <em className="not-italic text-primary">favoris</em>.
+      <header className="pt-1 pb-1">
+        <Eyebrow>Magasins</Eyebrow>
+        <h1 className="mt-0.5 text-[1.75rem] font-bold tracking-[-0.02em] text-foreground">
+          FNAC Paris · IDF
         </h1>
-        <p className="mt-2 text-[13px] text-muted-foreground">
-          Étoile les magasins importants. Ils remontent en haut partout dans l'app.
+        <p className="mt-1 text-[12px] text-muted-foreground">
+          {favStores.length} favoris · {totalInStock} produits en rayon au total
         </p>
       </header>
 
@@ -86,7 +88,6 @@ export function StoresPage({
       <Section
         eyebrow="Favoris"
         title={favStores.length === 0 ? 'Aucun favori' : `${favStores.length} favori${favStores.length > 1 ? 's' : ''}`}
-        subtitle="Tap sur une étoile pour ajouter / retirer"
       >
         {favStores.length === 0 ? (
           <Card className="p-5 text-center">
@@ -121,9 +122,8 @@ export function StoresPage({
 
       {/* Tous les autres */}
       <Section
-        eyebrow="Disponibles"
-        title="Tous les magasins"
-        subtitle={`${otherStores.length} magasins surveillables`}
+        eyebrow="Tous"
+        title="Autres magasins"
       >
         <div className="space-y-2">
           {otherStores.map((s) => (

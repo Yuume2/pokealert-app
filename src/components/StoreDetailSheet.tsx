@@ -1,21 +1,23 @@
 import { useEffect, useState } from 'react'
 import { Sheet } from './Sheet'
-import { Eyebrow, Badge, Button, Card, Skeleton } from './ui'
+import { Eyebrow, Button, Card, Skeleton } from './ui'
 import { Icon } from './Icons'
 import { cn } from '../lib/cn'
 import { haptic, openExternal } from '../lib/telegram'
-import { api, type StoreDetail } from '../lib/api'
+import { api, type StoreDetail, type ProductWithStock } from '../lib/api'
 import { isInTelegram } from '../lib/telegram'
 import { formatRelativeLong } from '../lib/useLiveTime'
 
 interface Props {
   eagid: string | null
+  stock: ProductWithStock[]
   onClose: () => void
+  onProductClick?: (p: ProductWithStock) => void
 }
 
 const useMock = !isInTelegram() || import.meta.env.VITE_USE_MOCK === 'true'
 
-export function StoreDetailSheet({ eagid, onClose }: Props) {
+export function StoreDetailSheet({ eagid, stock, onClose, onProductClick }: Props) {
   const [data, setData] = useState<StoreDetail | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -58,23 +60,128 @@ export function StoreDetailSheet({ eagid, onClose }: Props) {
           <Skeleton className="h-[140px]" />
         </div>
       ) : !data ? null : (
-        <Content data={data} />
+        <Content data={data} stock={stock} onProductClick={onProductClick} />
       )}
     </Sheet>
   )
 }
 
-function Content({ data }: { data: StoreDetail }) {
+function Content({
+  data,
+  stock,
+  onProductClick,
+}: {
+  data: StoreDetail
+  stock: ProductWithStock[]
+  onProductClick?: (p: ProductWithStock) => void
+}) {
+  const eagid = data.store.eagid
+  const enRayonProducts = stock.filter((p) =>
+    p.stocks.some((s) => s.eagid === eagid),
+  )
+
   return (
     <div className="px-5 pb-8 space-y-5">
       <StoreHeader store={data.store} />
       <ActionsBar store={data.store} />
       <StatsRow stats={data.stats} />
+      <InventoryGrid
+        products={enRayonProducts}
+        eagid={eagid}
+        onProductClick={onProductClick}
+      />
       <RestockPattern pattern={data.store.restock_pattern} />
-      <EnRayonSection items={data.en_rayon} />
       <HistoriqueSection items={data.historique} />
       <InfosPratiques store={data.store} />
     </div>
+  )
+}
+
+function InventoryGrid({
+  products,
+  eagid,
+  onProductClick,
+}: {
+  products: ProductWithStock[]
+  eagid: string
+  onProductClick?: (p: ProductWithStock) => void
+}) {
+  if (products.length === 0) {
+    return (
+      <section className="space-y-3">
+        <div className="px-1">
+          <Eyebrow>Inventaire</Eyebrow>
+          <h3 className="mt-0.5 text-base font-semibold text-foreground">
+            Rien en rayon
+          </h3>
+        </div>
+        <Card className="p-5 text-center">
+          <Icon.Clock className="mx-auto h-5 w-5 text-muted-foreground mb-2" />
+          <p className="text-[12px] text-muted-foreground">
+            Aucun produit Pokémon suivi disponible ici en ce moment.
+          </p>
+        </Card>
+      </section>
+    )
+  }
+
+  return (
+    <section className="space-y-3">
+      <div className="px-1">
+        <Eyebrow>Inventaire</Eyebrow>
+        <h3 className="mt-0.5 text-base font-semibold text-foreground">
+          {products.length} en rayon
+        </h3>
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        {products.map((p) => {
+          const stockEntry = p.stocks.find((s) => s.eagid === eagid)
+          const limited = stockEntry?.stock_label.includes('limitée') ?? false
+          return (
+            <button
+              key={p.id}
+              onClick={() => {
+                if (!onProductClick) return
+                haptic('medium')
+                onProductClick(p)
+              }}
+              className="group relative flex flex-col rounded-xl border border-border bg-card overflow-hidden text-left active:scale-[0.97] transition-all"
+            >
+              <div className="relative aspect-square bg-card-elevated overflow-hidden">
+                {p.image_url ? (
+                  <img
+                    src={p.image_url}
+                    alt={p.nom}
+                    loading="lazy"
+                    className="absolute inset-0 w-full h-full object-contain p-2"
+                    onError={(e) => {
+                      ;(e.currentTarget as HTMLImageElement).style.display = 'none'
+                    }}
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
+                    <Icon.Package className="h-6 w-6 opacity-30" />
+                  </div>
+                )}
+                {limited && (
+                  <span className="absolute top-1 right-1 inline-flex items-center h-4 px-1 rounded-full bg-warning-muted border border-warning/30 text-[8px] font-bold uppercase tracking-[0.1em] text-warning">
+                    Limité
+                  </span>
+                )}
+              </div>
+              <div className="p-2 space-y-0.5">
+                <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
+                  {p.type_produit}
+                </p>
+                <p className="text-[11px] font-bold tabular-nums text-foreground">
+                  {Math.round(p.prix_fnac)}€
+                </p>
+              </div>
+            </button>
+          )
+        })}
+      </div>
+    </section>
   )
 }
 
@@ -168,60 +275,6 @@ function RestockPattern({ pattern }: { pattern: StoreDetail['store']['restock_pa
         </div>
       </div>
     </Card>
-  )
-}
-
-function EnRayonSection({ items }: { items: StoreDetail['en_rayon'] }) {
-  if (items.length === 0) {
-    return (
-      <section className="space-y-3">
-        <div className="px-1">
-          <Eyebrow>En rayon maintenant</Eyebrow>
-          <h3 className="mt-0.5 text-base font-semibold text-foreground">Rien actuellement</h3>
-        </div>
-        <Card className="p-4 text-center">
-          <Icon.Clock className="mx-auto h-5 w-5 text-muted-foreground mb-2" />
-          <p className="text-[12px] text-muted-foreground">
-            Aucun produit Pokémon suivi n'est en rayon dans ce magasin.
-          </p>
-        </Card>
-      </section>
-    )
-  }
-
-  return (
-    <section className="space-y-3">
-      <div className="px-1">
-        <Eyebrow>En rayon maintenant</Eyebrow>
-        <h3 className="mt-0.5 text-base font-semibold text-foreground">
-          {items.length} produit{items.length > 1 ? 's' : ''} disponible{items.length > 1 ? 's' : ''}
-        </h3>
-      </div>
-      <div className="space-y-2">
-        {items.map((p) => (
-          <Card key={p.prid} className="p-3">
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                    {p.type_produit}
-                  </span>
-                  {p.stock_label.includes('limitée') && (
-                    <Badge variant="warning">Limité</Badge>
-                  )}
-                </div>
-                <p className="mt-0.5 text-[13px] font-semibold text-foreground truncate">
-                  {cleanName(p.produit_nom)}
-                </p>
-              </div>
-              <span className="text-base font-bold tabular-nums text-foreground shrink-0">
-                {Math.round(p.prix_fnac)}€
-              </span>
-            </div>
-          </Card>
-        ))}
-      </div>
-    </section>
   )
 }
 
