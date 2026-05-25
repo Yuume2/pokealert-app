@@ -206,25 +206,22 @@ function HeroBlock({ product, heat }: { product: ProductWithStock; heat: number 
   const imgUrl = product.image_url || ''
 
   return (
-    <div className="relative aspect-[16/9] rounded-2xl border border-border bg-card-elevated overflow-hidden">
-      <div className="absolute inset-0 aurora-primary opacity-50" />
-      <div
-        className="absolute inset-0 opacity-[0.04]"
-        style={{
-          backgroundImage:
-            'radial-gradient(circle at 1px 1px, white 1px, transparent 0)',
-          backgroundSize: '24px 24px',
-        }}
-      />
+    <div className="relative aspect-[4/3] rounded-2xl border border-border bg-white overflow-hidden">
 
-      <img
-        src={imgUrl}
-        alt={product.nom}
-        className="absolute inset-0 w-full h-full object-contain p-6 drop-shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
-        onError={(e) => {
-          ;(e.target as HTMLImageElement).style.display = 'none'
-        }}
-      />
+      {imgUrl ? (
+        <img
+          src={imgUrl}
+          alt={product.nom}
+          className="absolute inset-0 w-full h-full object-contain p-4"
+          onError={(e) => {
+            ;(e.target as HTMLImageElement).style.display = 'none'
+          }}
+        />
+      ) : (
+        <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
+          <Icon.Package className="h-12 w-12 opacity-20" />
+        </div>
+      )}
 
       <div className="absolute top-3 left-3">
         {heat > 0 && (

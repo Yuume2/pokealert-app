@@ -128,9 +128,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col bg-transparent text-foreground">
-      <AppHeader onOpenPortfolio={() => setShowPortfolio(true)} />
-
-      <main className="flex-1 px-4 pt-2 pb-28 max-w-2xl w-full mx-auto">
+      <main className="flex-1 px-4 pt-4 pb-28 max-w-2xl w-full mx-auto">
         {error && !loading && <ErrorBanner message={error} onRetry={() => load()} />}
 
         <div key={tab} className="animate-page">
@@ -147,6 +145,7 @@ export default function App() {
               loading={loading}
               onProductClick={handleProductClick}
               onRefresh={() => load(true)}
+              onOpenPortfolio={() => setShowPortfolio(true)}
             />
           )}
           {tab === 'stores' && (
@@ -203,29 +202,6 @@ export default function App() {
 
       {showOnboarding && <Onboarding onClose={dismissOnboarding} />}
     </div>
-  )
-}
-
-function AppHeader({ onOpenPortfolio }: { onOpenPortfolio: () => void }) {
-  return (
-    <header className="sticky top-0 z-30 px-4 pt-3 pb-2 max-w-2xl w-full mx-auto flex items-center justify-between gap-3 bg-background/80 backdrop-blur-md">
-      <div className="flex items-center gap-2">
-        <div className="h-7 w-7 rounded-lg bg-primary text-primary-foreground flex items-center justify-center">
-          <Icon.Flame className="h-3.5 w-3.5" />
-        </div>
-        <p className="text-[13px] font-bold tracking-tight text-foreground">PokeAlert</p>
-      </div>
-      <button
-        onClick={() => {
-          haptic('light')
-          onOpenPortfolio()
-        }}
-        className="h-8 w-8 inline-flex items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:text-foreground"
-        aria-label="Portfolio"
-      >
-        <Icon.Wallet className="h-3.5 w-3.5" />
-      </button>
-    </header>
   )
 }
 

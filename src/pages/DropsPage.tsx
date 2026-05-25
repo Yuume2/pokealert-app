@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Card, Eyebrow, Skeleton, Badge } from '../components/ui'
+import { Card, Eyebrow, Skeleton, Badge, Button } from '../components/ui'
 import { Icon } from '../components/Icons'
 import {
   api,
@@ -177,14 +177,43 @@ function HeroCard({
   const isHigh = prediction.score >= 60
   const ouvertureFmt = String(prediction.ouverture).padStart(2, '0') + 'h00'
 
+  const [scanBusy, setScanBusy] = useState(false)
+  const [scanResult, setScanResult] = useState<{
+    in_stock: number
+    total: number
+    products: Array<{ type_produit: string; serie: string; in_stock: boolean; limited: boolean }>
+    at: string
+  } | null>(null)
+  const [scanError, setScanError] = useState<string | null>(null)
+
+  const handleScan = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (scanBusy) return
+    haptic('medium')
+    setScanBusy(true)
+    setScanError(null)
+    try {
+      const res = await api.scanStore(prediction.eagid)
+      if (!res.success) throw new Error('Scan échoué')
+      setScanResult({
+        in_stock: res.in_stock_count,
+        total: res.total_scanned,
+        products: res.products,
+        at: res.scanned_at,
+      })
+      setTimeout(() => setScanResult(null), 60_000)
+    } catch (err) {
+      setScanError(err instanceof Error ? err.message : 'Scan échoué')
+      setTimeout(() => setScanError(null), 4000)
+    } finally {
+      setScanBusy(false)
+    }
+  }
+
   return (
-    <button
-      onClick={() => {
-        haptic('medium')
-        onClick()
-      }}
+    <div
       className={cn(
-        'relative w-full text-left rounded-3xl border overflow-hidden transition-all duration-200 active:scale-[0.99]',
+        'relative w-full text-left rounded-3xl border overflow-hidden transition-all duration-200',
         isHigh
           ? 'border-primary-border bg-card-elevated'
           : 'border-border bg-card',
@@ -250,13 +279,75 @@ function HeroCard({
           </ul>
         )}
 
-        <div className="flex items-center justify-end pt-1">
-          <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-primary">
-            Voir le magasin <Icon.ChevronRight className="h-3.5 w-3.5" />
-          </span>
+        {scanResult && (
+          <div className="rounded-2xl border border-success/30 bg-success-muted p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <Eyebrow>Live · {new Date(scanResult.at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</Eyebrow>
+              <span className="text-[11px] font-bold text-success tabular-nums">
+                {scanResult.in_stock}/{scanResult.total} en rayon
+              </span>
+            </div>
+            <div className="space-y-1">
+              {scanResult.products.map((p, i) => (
+                <div key={i} className="flex items-center justify-between text-[11px]">
+                  <span className="text-foreground font-semibold truncate">
+                    {p.type_produit} · {p.serie.replace(/^(ME\d+|EV\d+(?:\.\d+)?|Q\d+)\s*/, '')}
+                  </span>
+                  <span
+                    className={cn(
+                      'font-bold tabular-nums',
+                      p.in_stock ? 'text-success' : 'text-muted-foreground',
+                    )}
+                  >
+                    {p.in_stock ? (p.limited ? 'Limité' : 'En rayon') : '—'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {scanError && (
+          <p className="text-[11px] text-destructive font-semibold text-center">
+            {scanError}
+          </p>
+        )}
+
+        <div className="flex items-center gap-2 pt-1">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleScan}
+            disabled={scanBusy}
+            className="flex-1"
+          >
+            {scanBusy ? (
+              <>
+                <Icon.RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                Scan…
+              </>
+            ) : (
+              <>
+                <Icon.Zap className="h-3.5 w-3.5" />
+                Scan magasin
+              </>
+            )}
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => {
+              haptic('medium')
+              onClick()
+            }}
+            className="flex-1"
+          >
+            Détails
+            <Icon.ChevronRight className="h-3.5 w-3.5" />
+          </Button>
         </div>
       </div>
-    </button>
+    </div>
   )
 }
 

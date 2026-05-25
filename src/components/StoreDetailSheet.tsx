@@ -147,7 +147,7 @@ function InventoryGrid({
               }}
               className="group relative flex flex-col rounded-xl border border-border bg-card overflow-hidden text-left active:scale-[0.97] transition-all"
             >
-              <div className="relative aspect-square bg-card-elevated overflow-hidden">
+              <div className="relative aspect-square bg-white overflow-hidden">
                 {p.image_url ? (
                   <img
                     src={p.image_url}

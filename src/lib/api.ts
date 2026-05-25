@@ -232,13 +232,46 @@ export const api = {
     }),
   scanNow: (prid: string) =>
     fetchJson<{
-      ok: boolean
+      success: boolean
       prid: string
-      stocks: Array<{ eagid: string; magasin_nom: string; stock_label: string; availability_status: string }>
       scanned_at: string
+      total_magasins: number
+      en_rayon_total: number
+      en_rayon_favoris: number
+      stores: Array<{
+        eagid: string
+        magasin_nom: string
+        magasin_short: string
+        favori: boolean
+        stock_label: string
+        in_stock: boolean
+        limited: boolean
+      }>
     }>('/pokealert/products/scan-now', {
       method: 'POST',
       body: JSON.stringify({ prid }),
+    }),
+  scanStore: (eagid: string) =>
+    fetchJson<{
+      success: boolean
+      eagid: string
+      scanned_at: string
+      total_scanned: number
+      in_stock_count: number
+      products: Array<{
+        prid: string
+        nom: string
+        type_produit: string
+        serie: string
+        prix_fnac: number
+        image_url?: string | null
+        in_stock: boolean
+        stock_label: string
+        limited: boolean
+      }>
+    }>('/pokealert/stores/scan', {
+      method: 'POST',
+      body: JSON.stringify({ eagid }),
     }),
   addProduct: (url: string) =>
     fetchJson<{ ok: boolean; product?: Product; error?: string }>('/pokealert/products/add', {

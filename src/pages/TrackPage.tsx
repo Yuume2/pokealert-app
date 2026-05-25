@@ -12,9 +12,10 @@ interface Props {
   loading: boolean
   onProductClick: (p: ProductWithStock) => void
   onRefresh: () => void
+  onOpenPortfolio: () => void
 }
 
-export function TrackPage({ stock, loading, onProductClick, onRefresh }: Props) {
+export function TrackPage({ stock, loading, onProductClick, onRefresh, onOpenPortfolio }: Props) {
   const [view, setView] = useState<View>('tracked')
   const [query, setQuery] = useState('')
 
@@ -78,6 +79,7 @@ export function TrackPage({ stock, loading, onProductClick, onRefresh }: Props) 
       ) : list.length === 0 ? (
         <EmptyState view={view} onSwitch={() => setView('all')} />
       ) : (
+        <>
         <Grid>
           {list.map((p) => (
             <ProductTile
@@ -90,7 +92,27 @@ export function TrackPage({ stock, loading, onProductClick, onRefresh }: Props) 
             />
           ))}
         </Grid>
+        </>
       )}
+
+      <button
+        onClick={() => {
+          haptic('light')
+          onOpenPortfolio()
+        }}
+        className="w-full flex items-center justify-between gap-3 rounded-2xl border border-border bg-card p-3.5 text-left hover:bg-card-hover active:scale-[0.98] transition-all mt-4"
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-muted text-primary shrink-0">
+            <Icon.Wallet className="h-4 w-4" />
+          </div>
+          <div>
+            <p className="text-[13px] font-semibold text-foreground">Mon portfolio</p>
+            <p className="text-[11px] text-muted-foreground">Achats, marge réalisée, ROI</p>
+          </div>
+        </div>
+        <Icon.ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+      </button>
     </div>
   )
 }
@@ -125,13 +147,13 @@ function ProductTile({
             : 'border-border hover:border-border-strong',
       )}
     >
-      <div className="relative aspect-square bg-card-elevated overflow-hidden">
+      <div className="relative aspect-square bg-white overflow-hidden">
         {product.image_url ? (
           <img
             src={product.image_url}
             alt={product.nom}
             loading="lazy"
-            className="absolute inset-0 w-full h-full object-contain p-3 transition-transform duration-300 group-hover:scale-105"
+            className="absolute inset-0 w-full h-full object-contain p-2 transition-transform duration-300 group-hover:scale-105"
             onError={(e) => {
               ;(e.currentTarget as HTMLImageElement).style.display = 'none'
             }}
@@ -142,55 +164,52 @@ function ProductTile({
           </div>
         )}
 
-        {isTracked && (
-          <span className="absolute top-2 left-2 inline-flex items-center gap-1 h-5 px-1.5 rounded-full bg-background/80 backdrop-blur-md border border-border text-[9px] font-bold uppercase tracking-[0.1em] text-primary">
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="absolute inset-0 rounded-full bg-primary animate-ping opacity-60" />
-              <span className="relative rounded-full bg-primary h-1.5 w-1.5" />
+        <div className="absolute top-1.5 left-1.5 right-1.5 flex items-start justify-between gap-1 pointer-events-none">
+          {isTracked ? (
+            <span className="inline-flex items-center gap-1 h-5 px-1.5 rounded-full bg-background/85 backdrop-blur-md border border-border text-[9px] font-bold uppercase tracking-[0.1em] text-primary">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="absolute inset-0 rounded-full bg-primary animate-ping opacity-60" />
+                <span className="relative rounded-full bg-primary h-1.5 w-1.5" />
+              </span>
+              Suivi
             </span>
-            Suivi
-          </span>
-        )}
+          ) : <span />}
 
-        {live && (
-          <span
-            className={cn(
-              'absolute top-2 right-2 inline-flex items-center gap-1 h-5 px-1.5 rounded-full backdrop-blur-md border text-[9px] font-bold uppercase tracking-[0.1em]',
-              liveFav
-                ? 'bg-success-muted border-success/30 text-success'
-                : 'bg-background/80 border-border text-foreground',
-            )}
-          >
+          {live && (
             <span
-              className="block h-1.5 w-1.5 rounded-full"
-              style={{
-                background: liveFav ? 'var(--color-success)' : 'var(--color-foreground)',
-                boxShadow: liveFav ? '0 0 6px var(--color-success-glow)' : 'none',
-              }}
-            />
-            {liveFav ? `${inStockFav} fav` : `${inStockTotal}`}
-          </span>
-        )}
+              className={cn(
+                'inline-flex items-center gap-1 h-5 px-1.5 rounded-full backdrop-blur-md border text-[9px] font-bold uppercase tracking-[0.1em]',
+                liveFav
+                  ? 'bg-success-muted border-success/30 text-success'
+                  : 'bg-background/85 border-border text-foreground',
+              )}
+            >
+              <span
+                className="block h-1.5 w-1.5 rounded-full"
+                style={{
+                  background: liveFav ? 'var(--color-success)' : 'var(--color-foreground)',
+                  boxShadow: liveFav ? '0 0 6px var(--color-success-glow)' : 'none',
+                }}
+              />
+              {liveFav ? `${inStockFav} fav` : inStockTotal}
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="p-3 space-y-1.5">
         <div className="flex items-center gap-1.5">
           <Badge variant="default">{product.type_produit}</Badge>
-          <span className="text-[10px] font-semibold text-muted-foreground truncate">
+          <span className="text-[10px] font-semibold text-muted-foreground truncate flex-1">
             {cleanSerie(product.serie)}
           </span>
         </div>
         <p className="text-[12px] font-semibold text-foreground leading-snug line-clamp-2 min-h-[2.6em]">
           {cleanName(product.nom)}
         </p>
-        <div className="flex items-end justify-between pt-1">
-          <p className="text-[15px] font-bold tabular-nums text-foreground">
-            {Math.round(product.prix_fnac)}€
-          </p>
-          <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-primary">
-            Ouvrir <Icon.ChevronRight className="h-3 w-3" />
-          </span>
-        </div>
+        <p className="text-[15px] font-bold tabular-nums text-foreground">
+          {Math.round(product.prix_fnac)}€
+        </p>
       </div>
     </button>
   )
