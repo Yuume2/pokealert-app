@@ -77,6 +77,75 @@ export interface CalendrierEntry {
   notes?: string
 }
 
+export interface StoreDetail {
+  generated_at: string
+  store: {
+    eagid: string
+    nom: string
+    short: string
+    adresse: string
+    zip: string
+    tel: string
+    horaires: string
+    mapsUrl: string
+    restock_pattern: {
+      days: string[]
+      heure: string
+      note: string
+    }
+  }
+  en_rayon: Array<{
+    prid: string
+    produit_nom: string
+    type_produit: string
+    serie: string
+    prix_fnac: number
+    stock_label: string
+    last_check: string
+  }>
+  historique: Array<{
+    prid: string
+    produit_nom: string
+    type_produit: string
+    stock_label: string
+    last_check: string
+    currently_in_stock: boolean
+  }>
+  stats: {
+    total_produits_tracked: number
+    en_rayon_actuel: number
+    changements_7j: number
+  }
+}
+
+export interface TodayPrediction {
+  eagid: string
+  nom: string
+  short: string
+  favori: boolean
+  score: number
+  heure_optimale: string
+  produit_cible: string
+  reasoning: string[]
+  ouverture: number
+  en_rayon_count: number
+}
+
+export interface TodayData {
+  generated_at: string
+  date_today: string
+  paris_day: string
+  paris_hour: number
+  is_weekend: boolean
+  predictions: TodayPrediction[]
+  top_3: TodayPrediction[]
+  has_urgent: boolean
+  top_confidence: number
+  sortie_imminente: CalendrierEntry[]
+  prochaine_critique: CalendrierEntry | null
+  context_message: string
+}
+
 export interface BriefData {
   generated_at: string
   brief: {
@@ -134,6 +203,8 @@ export const api = {
     }),
   stats: () => fetchJson<StatsData>('/pokealert/stats'),
   brief: () => fetchJson<BriefData>('/pokealert/brief'),
+  today: () => fetchJson<TodayData>('/pokealert/today'),
+  store: (eagid: string) => fetchJson<StoreDetail>(`/pokealert/store?eagid=${encodeURIComponent(eagid)}`),
   togglePause: (paused: boolean) =>
     fetchJson<{ ok: boolean }>('/pokealert/bot/pause', {
       method: 'POST',

@@ -14,6 +14,7 @@ interface Props {
   userLat?: number
   userLng?: number
   onRequestGeoloc: () => void
+  onStoreClick: (eagid: string) => void
 }
 
 export function StoresPage({
@@ -23,6 +24,7 @@ export function StoresPage({
   userLat,
   userLng,
   onRequestGeoloc,
+  onStoreClick,
 }: Props) {
   /** Map eagid → nombre de produits en rayon */
   const stockCountByStore = useMemo(() => {
@@ -110,6 +112,7 @@ export function StoresPage({
                 stockCount={stockCountByStore.get(s.eagid) ?? 0}
                 mapsUrl={s.mapsUrl}
                 onToggleFavori={onToggleFavori}
+                onClick={() => onStoreClick(s.eagid)}
               />
             ))}
           </div>
@@ -135,6 +138,7 @@ export function StoresPage({
               stockCount={stockCountByStore.get(s.eagid) ?? 0}
               mapsUrl={s.mapsUrl}
               onToggleFavori={onToggleFavori}
+              onClick={() => onStoreClick(s.eagid)}
             />
           ))}
         </div>
@@ -176,6 +180,7 @@ function StoreRow({
   mapsUrl,
   eagid,
   onToggleFavori,
+  onClick,
 }: {
   eagid: string
   nom: string
@@ -186,6 +191,7 @@ function StoreRow({
   stockCount: number
   mapsUrl: string
   onToggleFavori: (eagid: string) => void
+  onClick: () => void
 }) {
   const handleMaps = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -194,7 +200,11 @@ function StoreRow({
   }
 
   return (
-    <Card className={cn('p-3.5', isFavori && 'border-primary-border bg-primary-muted/30')}>
+    <Card
+      interactive
+      onClick={onClick}
+      className={cn('p-3.5', isFavori && 'border-primary-border bg-primary-muted/30')}
+    >
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">

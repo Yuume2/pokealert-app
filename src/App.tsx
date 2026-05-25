@@ -2,14 +2,16 @@ import { useCallback, useEffect, useState } from 'react'
 import { isInTelegram, haptic } from './lib/telegram'
 import { api, type BotStatus, type ProductWithStock } from './lib/api'
 import { MOCK_STATUS, MOCK_STOCK } from './lib/mock'
-import { BriefPage } from './pages/BriefPage'
+import { TodayPage } from './pages/TodayPage'
 import { HomeV2Page } from './pages/HomeV2'
 import { SearchPage } from './pages/SearchPage'
 import { StoresPage } from './pages/StoresPage'
+import { CalendrierPage } from './pages/CalendrierPage'
 import { PortfolioPage } from './pages/PortfolioPage'
 import { Icon } from './components/Icons'
 import { cn } from './lib/cn'
 import { ProductDetailSheet } from './components/ProductDetailSheet'
+import { StoreDetailSheet } from './components/StoreDetailSheet'
 import { Onboarding } from './components/Onboarding'
 import {
   getFavorisStores,
@@ -19,7 +21,7 @@ import {
 } from './lib/preferences'
 import { useGeolocation } from './lib/useGeolocation'
 
-type Tab = 'brief' | 'live' | 'search' | 'stores' | 'portfolio'
+type Tab = 'today' | 'live' | 'search' | 'stores' | 'calendrier'
 
 const useMock = (() => {
   if (typeof window === 'undefined') return false
@@ -31,14 +33,14 @@ export default function App() {
   const [tab, setTab] = useState<Tab>(() => {
     const last = getLastTab()
     if (
-      last === 'brief' ||
+      last === 'today' ||
       last === 'live' ||
       last === 'search' ||
       last === 'stores' ||
-      last === 'portfolio'
+      last === 'calendrier'
     )
       return last as Tab
-    return 'brief'
+    return 'today'
   })
 
   const [status, setStatus] = useState<BotStatus | null>(null)
@@ -47,7 +49,9 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<ProductWithStock | null>(null)
+  const [selectedStoreEagid, setSelectedStoreEagid] = useState<string | null>(null)
   const [showOnboarding, setShowOnboarding] = useState(false)
+  const [showPortfolio, setShowPortfolio] = useState(false)
   const [lastFetch, setLastFetch] = useState<number>(0)
   const [favoris, setFavoris] = useState<Set<string>>(() => getFavorisStores())
   const [portfolioVersion, setPortfolioVersion] = useState(0)
@@ -117,6 +121,11 @@ export default function App() {
     setSelectedProduct(product)
   }
 
+  const handleStoreClick = (eagid: string) => {
+    haptic('medium')
+    setSelectedStoreEagid(eagid)
+  }
+
   const handleToggleFavori = (eagid: string) => {
     const updated = toggleFavoriStore(eagid)
     setFavoris(new Set(updated))
@@ -132,10 +141,9 @@ export default function App() {
         {error && !loading && <ErrorBanner message={error} onRetry={() => load()} />}
 
         <div key={tab} className="animate-page">
-          {tab === 'brief' && (
-            <BriefPage
-              stock={stock}
-              onProductClick={handleProductClick}
+          {tab === 'today' && (
+            <TodayPage
+              onStoreClick={handleStoreClick}
               refreshing={refreshing}
               onRefresh={() => load(true)}
             />
@@ -172,9 +180,31 @@ export default function App() {
               userLat={geo.lat}
               userLng={geo.lng}
               onRequestGeoloc={geo.request}
+              onStoreClick={handleStoreClick}
             />
           )}
-          {tab === 'portfolio' && <PortfolioPage refreshKey={portfolioVersion} />}
+          {tab === 'calendrier' && <CalendrierPage />}
+        </div>
+
+        <div className="mt-8 px-1">
+          <button
+            onClick={() => {
+              haptic('light')
+              setShowPortfolio(true)
+            }}
+            className="w-full flex items-center justify-between gap-3 rounded-2xl border border-border bg-card p-3.5 text-left hover:bg-card-hover active:scale-[0.98] transition-all"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-muted text-primary shrink-0">
+                <Icon.Wallet className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-[13px] font-semibold text-foreground">Mon portfolio</p>
+                <p className="text-[11px] text-muted-foreground">Achats, marge réalisée, ROI</p>
+              </div>
+            </div>
+            <Icon.ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+          </button>
         </div>
       </main>
 
@@ -188,6 +218,23 @@ export default function App() {
         onClose={() => setSelectedProduct(null)}
         onPurchased={handlePurchased}
       />
+
+      <StoreDetailSheet eagid={selectedStoreEagid} onClose={() => setSelectedStoreEagid(null)} />
+
+      {showPortfolio && (
+        <div className="fixed inset-0 z-[100] bg-background overflow-y-auto">
+          <div className="max-w-2xl mx-auto px-4 py-6">
+            <button
+              onClick={() => setShowPortfolio(false)}
+              className="mb-4 flex h-9 w-9 items-center justify-center rounded-full bg-card border border-border text-muted-foreground hover:text-foreground"
+              aria-label="Fermer"
+            >
+              <Icon.X className="h-4 w-4" />
+            </button>
+            <PortfolioPage refreshKey={portfolioVersion} />
+          </div>
+        </div>
+      )}
 
       {showOnboarding && <Onboarding onClose={dismissOnboarding} />}
     </div>
@@ -226,11 +273,11 @@ function BottomNav({
   refreshing: boolean
 }) {
   const tabs: Array<{ id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }> = [
-    { id: 'brief', label: 'Brief', icon: Icon.Sparkles },
+    { id: 'today', label: 'Aujourd\'hui', icon: Icon.Target },
     { id: 'live', label: 'Live', icon: Icon.Zap },
     { id: 'search', label: 'Chercher', icon: Icon.Search },
     { id: 'stores', label: 'Magasins', icon: Icon.Store },
-    { id: 'portfolio', label: 'Portfolio', icon: Icon.Wallet },
+    { id: 'calendrier', label: 'Calendrier', icon: Icon.Sparkles },
   ]
 
   return (
@@ -272,7 +319,7 @@ function BottomNav({
                 />
                 <span
                   className={cn(
-                    'text-[10px] font-semibold tracking-tight transition-colors',
+                    'text-[9px] font-semibold tracking-tight transition-colors',
                     isActive ? 'text-foreground' : 'text-muted-foreground',
                   )}
                 >
