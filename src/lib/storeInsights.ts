@@ -154,19 +154,19 @@ export function buildWalkthrough(eagid: string, _produitNom: string, heureOuvert
   }
 
   const lines = [
-    `🎯 *Action plan*`,
+    `Plan d'attaque`,
     ``,
-    `📍 *${insight.metroSortie}*`,
-    `🚇 Lignes : ${insight.metroLigne}`,
+    `Sortie · ${insight.metroSortie}`,
+    `Lignes · ${insight.metroLigne}`,
     ``,
-    `🏬 *${insight.etage}*`,
-    `📦 ${insight.rayonLocation}`,
+    `Étage · ${insight.etage}`,
+    `Rayon · ${insight.rayonLocation}`,
     ``,
-    `⏰ *Cible ${heureOuverture}*`,
+    `Heure cible · ${heureOuverture}`,
     `   (${insight.tempsOuverture})`,
     ``,
-    `💡 Conseils tactiques :`,
-    ...insight.notesTactiques.map((n) => `   • ${n}`),
+    `Notes :`,
+    ...insight.notesTactiques.map((n) => `   · ${n}`),
   ]
 
   return lines.join('\n')

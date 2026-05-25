@@ -203,7 +203,7 @@ function Content({
 }
 
 function HeroBlock({ product, heat }: { product: ProductWithStock; heat: number }) {
-  const imgUrl = getFnacImageUrl(product.prid)
+  const imgUrl = product.image_url || ''
 
   return (
     <div className="relative aspect-[16/9] rounded-2xl border border-border bg-card-elevated overflow-hidden">
@@ -524,12 +524,6 @@ function buildMultiTripUrl(stores: Array<{ lat: number; lng: number }>): string 
     .map((s) => `${s.lat},${s.lng}`)
     .join('|')
   return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}${waypoints ? `&waypoints=${waypoints}` : ''}&travelmode=transit`
-}
-
-function getFnacImageUrl(prid: string): string {
-  if (!prid || prid.length < 8) return ''
-  const path = prid.match(/.{1,2}/g)?.slice(0, 3).join('/') ?? ''
-  return `https://static.fnac-static.com/multimedia/Images/FR/NR/${path}/${prid}/standard.jpg`
 }
 
 function cleanName(name: string): string {

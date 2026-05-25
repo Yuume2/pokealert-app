@@ -3,8 +3,7 @@ import { isInTelegram, haptic } from './lib/telegram'
 import { api, type BotStatus, type ProductWithStock } from './lib/api'
 import { MOCK_STATUS, MOCK_STOCK } from './lib/mock'
 import { TodayPage } from './pages/TodayPage'
-import { HomeV2Page } from './pages/HomeV2'
-import { SearchPage } from './pages/SearchPage'
+import { ProductsPage } from './pages/ProductsPage'
 import { StoresPage } from './pages/StoresPage'
 import { CalendrierPage } from './pages/CalendrierPage'
 import { PortfolioPage } from './pages/PortfolioPage'
@@ -21,7 +20,7 @@ import {
 } from './lib/preferences'
 import { useGeolocation } from './lib/useGeolocation'
 
-type Tab = 'today' | 'live' | 'search' | 'stores' | 'calendrier'
+type Tab = 'today' | 'products' | 'stores' | 'calendrier'
 
 const useMock = (() => {
   if (typeof window === 'undefined') return false
@@ -34,8 +33,7 @@ export default function App() {
     const last = getLastTab()
     if (
       last === 'today' ||
-      last === 'live' ||
-      last === 'search' ||
+      last === 'products' ||
       last === 'stores' ||
       last === 'calendrier'
     )
@@ -148,28 +146,11 @@ export default function App() {
               onRefresh={() => load(true)}
             />
           )}
-          {tab === 'live' && (
-            <HomeV2Page
-              status={status}
+          {tab === 'products' && (
+            <ProductsPage
               stock={stock}
               loading={loading}
-              refreshing={refreshing}
-              lastFetch={lastFetch}
-              favoris={favoris}
-              onToggleFavori={handleToggleFavori}
               onProductClick={handleProductClick}
-              onRefresh={() => load(true)}
-              userLat={geo.lat}
-              userLng={geo.lng}
-            />
-          )}
-          {tab === 'search' && (
-            <SearchPage
-              stock={stock}
-              favoris={favoris}
-              onProductClick={handleProductClick}
-              userLat={geo.lat}
-              userLng={geo.lng}
             />
           )}
           {tab === 'stores' && (
@@ -276,8 +257,7 @@ function BottomNav({
 }) {
   const tabs: Array<{ id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }> = [
     { id: 'today', label: 'Aujourd\'hui', icon: Icon.Target },
-    { id: 'live', label: 'Live', icon: Icon.Zap },
-    { id: 'search', label: 'Chercher', icon: Icon.Search },
+    { id: 'products', label: 'Produits', icon: Icon.Package },
     { id: 'stores', label: 'Magasins', icon: Icon.Store },
     { id: 'calendrier', label: 'Calendrier', icon: Icon.Sparkles },
   ]
@@ -301,7 +281,7 @@ function BottomNav({
       )}
 
       <div className="max-w-2xl mx-auto px-2">
-        <div className="grid grid-cols-5">
+        <div className="grid grid-cols-4">
           {tabs.map((t) => {
             const isActive = current === t.id
             return (

@@ -261,17 +261,27 @@ export function Stat({
   )
 }
 
-/* ============ HEAT SCORE (🔥/5) ============ */
+/* ============ HEAT SCORE ============ */
 
 export function HeatScore({ score, size = 'md' }: { score: number; size?: 'sm' | 'md' | 'lg' }) {
-  const cls =
-    size === 'sm' ? 'text-[10px]' : size === 'lg' ? 'text-base' : 'text-xs'
   if (score === 0) return null
-
-  const flames = '🔥'.repeat(score)
+  const dotSize = size === 'sm' ? 'h-1 w-1' : size === 'lg' ? 'h-2 w-2' : 'h-1.5 w-1.5'
+  const intensity = ['var(--color-muted-foreground)', 'var(--color-warning)', 'var(--color-warning)', 'var(--color-destructive)', 'var(--color-destructive)']
   return (
-    <span className={cn('inline-flex items-center font-semibold leading-none', cls)}>
-      <span aria-label={`Score chaleur ${score} sur 5`}>{flames}</span>
+    <span
+      className="inline-flex items-center gap-[3px]"
+      aria-label={`Score chaleur ${score} sur 5`}
+    >
+      {[0, 1, 2, 3, 4].map((i) => (
+        <span
+          key={i}
+          className={cn('rounded-full', dotSize)}
+          style={{
+            background: i < score ? intensity[score - 1] : 'var(--color-border)',
+            boxShadow: i < score ? `0 0 4px ${intensity[score - 1]}` : 'none',
+          }}
+        />
+      ))}
     </span>
   )
 }

@@ -71,7 +71,7 @@ export function FreshnessFull({ lastCheck, className }: { lastCheck?: string | n
           {f.label} · confiance {f.confidence}%
         </p>
         {f.warning && (
-          <p className="text-[10px] text-muted-foreground mt-0.5">⚠️ {f.warning}</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">{f.warning}</p>
         )}
       </div>
     </div>

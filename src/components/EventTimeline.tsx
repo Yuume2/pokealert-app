@@ -84,12 +84,12 @@ export function EventTimeline() {
         <div className="rounded-2xl border border-border bg-card/50 p-3 space-y-1.5">
           {stats.midday_restocks_7d > 0 && (
             <p className="text-[11px] text-muted-foreground">
-              💡 <span className="font-bold text-foreground">{stats.midday_restocks_7d}</span> restock(s) en milieu de journée détecté(s) cette semaine
+              <span className="font-bold text-foreground">{stats.midday_restocks_7d}</span> restock{stats.midday_restocks_7d > 1 ? 's' : ''} en milieu de journée cette semaine
             </p>
           )}
           {stats.fast_sellouts_7d > 0 && (
             <p className="text-[11px] text-muted-foreground">
-              ⚡ <span className="font-bold text-foreground">{stats.fast_sellouts_7d}</span> épuisement(s) rapide(s) (&lt; 1h) cette semaine
+              <span className="font-bold text-foreground">{stats.fast_sellouts_7d}</span> épuisement{stats.fast_sellouts_7d > 1 ? 's' : ''} rapide{stats.fast_sellouts_7d > 1 ? 's' : ''} (&lt; 1h) cette semaine
             </p>
           )}
         </div>
@@ -107,8 +107,6 @@ function EventRow({ event, isFirst }: { event: EventEntry; isFirst: boolean }) {
     ? 'var(--color-success)'
     : 'var(--color-destructive)'
 
-  const icon = isMidday ? '🚨' : isEntry ? '🟢' : '🔴'
-
   return (
     <div
       className={cn(
@@ -118,7 +116,10 @@ function EventRow({ event, isFirst }: { event: EventEntry; isFirst: boolean }) {
       )}
     >
       <div className="flex items-center gap-3 min-w-0 flex-1">
-        <span className="text-sm shrink-0">{icon}</span>
+        <span
+          className="block h-2 w-2 rounded-full shrink-0"
+          style={{ background: accentColor, boxShadow: `0 0 8px ${accentColor}` }}
+        />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
             <span

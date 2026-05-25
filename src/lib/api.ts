@@ -14,6 +14,7 @@ export interface Product {
   prix_fnac: number
   actif: boolean
   auto_scan?: boolean
+  image_url?: string | null
 }
 
 export interface StockEntry {

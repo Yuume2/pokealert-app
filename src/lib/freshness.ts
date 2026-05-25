@@ -124,11 +124,3 @@ export function computeFreshness(lastCheckIso?: string | null): FreshnessInfo {
   }
 }
 
-export function freshnessIcon(level: FreshnessLevel): string {
-  switch (level) {
-    case 'fresh': return '🟢'
-    case 'recent': return '🟡'
-    case 'stale': return '🟠'
-    case 'expired': return '🔴'
-  }
-}
