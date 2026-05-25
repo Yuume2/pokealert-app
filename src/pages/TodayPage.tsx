@@ -7,6 +7,7 @@ import { cn } from '../lib/cn'
 import { useLiveTime, formatRelativeShort } from '../lib/useLiveTime'
 import { getStoreByEagid } from '../lib/stores'
 import { STORE_INSIGHTS } from '../lib/storeInsights'
+import { DropFeed } from '../components/DropFeed'
 
 interface Props {
   onStoreClick: (eagid: string) => void
@@ -73,6 +74,9 @@ export function TodayPage({ onStoreClick, refreshing, onRefresh }: Props) {
           onClick={() => onStoreClick(topMag.eagid)}
         />
       )}
+
+      {/* Live feed des produits en rayon */}
+      <DropFeed />
 
       {/* Backup magasins 2 & 3 */}
       {data.top_3.length > 1 && (
