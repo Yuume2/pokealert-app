@@ -9,14 +9,17 @@ import type { ProductWithStock, StockEntry } from '../lib/api'
 import { addPurchase, getPortfolio } from '../lib/preferences'
 import { heatScore } from '../lib/search'
 import { getStoreByEagid, formatDistance, haversineKm } from '../lib/stores'
+import { AutoScanControls } from './AutoScanControls'
 
 interface Props {
   product: ProductWithStock | null
   favoris: Set<string>
   userLat?: number
   userLng?: number
+  autoScanCount: number
   onClose: () => void
   onPurchased?: () => void
+  onAutoScanChange?: () => void
 }
 
 export function ProductDetailSheet({
@@ -24,8 +27,10 @@ export function ProductDetailSheet({
   favoris,
   userLat,
   userLng,
+  autoScanCount,
   onClose,
   onPurchased,
+  onAutoScanChange,
 }: Props) {
   useLiveTime(30_000)
   return (
@@ -36,9 +41,11 @@ export function ProductDetailSheet({
           favoris={favoris}
           userLat={userLat}
           userLng={userLng}
+          autoScanCount={autoScanCount}
           onPurchased={() => {
             onPurchased?.()
           }}
+          onAutoScanChange={() => onAutoScanChange?.()}
         />
       )}
     </Sheet>
@@ -50,13 +57,17 @@ function Content({
   favoris,
   userLat,
   userLng,
+  autoScanCount,
   onPurchased,
+  onAutoScanChange,
 }: {
   product: ProductWithStock
   favoris: Set<string>
   userLat?: number
   userLng?: number
+  autoScanCount: number
   onPurchased: () => void
+  onAutoScanChange: () => void
 }) {
   const inStock = product.stocks.filter(
     (s) =>
@@ -115,6 +126,12 @@ function Content({
         inStock={inStock}
         onPurchased={onPurchased}
         firstStock={sortedStocks[0]}
+      />
+
+      <AutoScanControls
+        product={product}
+        autoScanCount={autoScanCount}
+        onAutoScanChange={onAutoScanChange}
       />
 
       <MarginBlock product={product} />

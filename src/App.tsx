@@ -215,8 +215,10 @@ export default function App() {
         favoris={favoris}
         userLat={geo.lat}
         userLng={geo.lng}
+        autoScanCount={stock.filter((p) => p.auto_scan === true).length}
         onClose={() => setSelectedProduct(null)}
         onPurchased={handlePurchased}
+        onAutoScanChange={() => load(true)}
       />
 
       <StoreDetailSheet eagid={selectedStoreEagid} onClose={() => setSelectedStoreEagid(null)} />

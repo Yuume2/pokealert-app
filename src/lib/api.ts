@@ -13,6 +13,7 @@ export interface Product {
   serie: string
   prix_fnac: number
   actif: boolean
+  auto_scan?: boolean
 }
 
 export interface StockEntry {
@@ -222,6 +223,21 @@ export const api = {
     fetchJson<{ ok: boolean }>('/pokealert/products/toggle', {
       method: 'POST',
       body: JSON.stringify({ id, actif }),
+    }),
+  toggleAutoScan: (id: number, auto_scan: boolean) =>
+    fetchJson<{ ok: boolean; id: number; auto_scan: boolean }>('/pokealert/products/auto-toggle', {
+      method: 'POST',
+      body: JSON.stringify({ id, auto_scan }),
+    }),
+  scanNow: (prid: string) =>
+    fetchJson<{
+      ok: boolean
+      prid: string
+      stocks: Array<{ eagid: string; magasin_nom: string; stock_label: string; availability_status: string }>
+      scanned_at: string
+    }>('/pokealert/products/scan-now', {
+      method: 'POST',
+      body: JSON.stringify({ prid }),
     }),
   addProduct: (url: string) =>
     fetchJson<{ ok: boolean; product?: Product; error?: string }>('/pokealert/products/add', {
