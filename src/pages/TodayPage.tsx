@@ -8,6 +8,7 @@ import { useLiveTime, formatRelativeShort } from '../lib/useLiveTime'
 import { getStoreByEagid } from '../lib/stores'
 import { STORE_INSIGHTS } from '../lib/storeInsights'
 import { DropFeed } from '../components/DropFeed'
+import { EventTimeline } from '../components/EventTimeline'
 
 interface Props {
   onStoreClick: (eagid: string) => void
@@ -77,6 +78,9 @@ export function TodayPage({ onStoreClick, refreshing, onRefresh }: Props) {
 
       {/* Live feed des produits en rayon */}
       <DropFeed />
+
+      {/* Timeline des événements ENTRY/EXIT */}
+      <EventTimeline />
 
       {/* Backup magasins 2 & 3 */}
       {data.top_3.length > 1 && (

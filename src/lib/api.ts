@@ -77,6 +77,33 @@ export interface CalendrierEntry {
   notes?: string
 }
 
+export interface EventEntry {
+  prid: string
+  eagid: string
+  event_type: 'ENTRY' | 'EXIT' | 'ENTRY_INITIAL'
+  produit_nom: string
+  magasin_nom: string
+  is_favori: boolean
+  event_at: string
+  duration_minutes: number
+  context: string
+  age_minutes: number
+}
+
+export interface EventsData {
+  generated_at: string
+  stats: {
+    total: number
+    last_24h: number
+    last_7d: number
+    entries_24h: number
+    exits_24h: number
+    midday_restocks_7d: number
+    fast_sellouts_7d: number
+  }
+  recent: EventEntry[]
+}
+
 export interface StoreDetail {
   generated_at: string
   store: {
@@ -205,6 +232,7 @@ export const api = {
   brief: () => fetchJson<BriefData>('/pokealert/brief'),
   today: () => fetchJson<TodayData>('/pokealert/today'),
   store: (eagid: string) => fetchJson<StoreDetail>(`/pokealert/store?eagid=${encodeURIComponent(eagid)}`),
+  events: () => fetchJson<EventsData>('/pokealert/events'),
   togglePause: (paused: boolean) =>
     fetchJson<{ ok: boolean }>('/pokealert/bot/pause', {
       method: 'POST',

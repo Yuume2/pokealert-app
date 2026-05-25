@@ -3,8 +3,9 @@ import { Card, Eyebrow } from './ui'
 import { Icon } from './Icons'
 import { api, type ProductWithStock } from '../lib/api'
 import { isInTelegram } from '../lib/telegram'
-import { useLiveTime, formatRelativeShort } from '../lib/useLiveTime'
+import { useLiveTime } from '../lib/useLiveTime'
 import { cn } from '../lib/cn'
+import { FreshnessBadge } from './FreshnessBadge'
 
 interface FeedItem {
   id: string
@@ -161,14 +162,12 @@ function FeedRow({ item, isFirst }: { item: FeedItem; isFirst: boolean }) {
         </div>
       </div>
 
-      {/* Prix + temps */}
-      <div className="text-right shrink-0">
+      {/* Prix + freshness */}
+      <div className="text-right shrink-0 space-y-1">
         <p className="text-[13px] font-bold tabular-nums text-foreground">
           {Math.round(item.prix)}€
         </p>
-        <p className="text-[9px] text-subtle-foreground tabular-nums">
-          {formatRelativeShort(item.timestamp)}
-        </p>
+        <FreshnessBadge lastCheck={item.timestamp} size="sm" />
       </div>
     </div>
   )
