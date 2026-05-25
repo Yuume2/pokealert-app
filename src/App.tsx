@@ -41,7 +41,7 @@ export default function App() {
     return 'today'
   })
 
-  const [status, setStatus] = useState<BotStatus | null>(null)
+  const [, setStatus] = useState<BotStatus | null>(null)
   const [stock, setStock] = useState<ProductWithStock[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -50,7 +50,7 @@ export default function App() {
   const [selectedStoreEagid, setSelectedStoreEagid] = useState<string | null>(null)
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [showPortfolio, setShowPortfolio] = useState(false)
-  const [lastFetch, setLastFetch] = useState<number>(0)
+  const [, setLastFetch] = useState<number>(0)
   const [favoris, setFavoris] = useState<Set<string>>(() => getFavorisStores())
   const [portfolioVersion, setPortfolioVersion] = useState(0)
 
